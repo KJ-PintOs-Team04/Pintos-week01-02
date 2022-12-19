@@ -24,9 +24,14 @@
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
 
+static int64_t next_tick_to_awake = INT64_MAX; // global ticks initialize
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+
+/* List of processes in THREAD_BLOCKED state. */
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -108,6 +113,7 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -306,6 +312,59 @@ thread_yield (void) {
 		list_push_back (&ready_list, &curr->elem);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
+}
+
+void
+thread_sleep (int64_t ticks) { // 매개변수 ticks - 각 쓰레드의 local ticks
+	struct thread *curr = thread_current ();
+	enum intr_level old_level;
+
+	ASSERT (!intr_context ());
+
+	old_level = intr_disable ();
+	// if (curr != idle_thread)
+	// 	list_push_back (&ready_list, &curr->elem);
+
+	// 현재 스레드를 sleep_list에 삽입 
+	if (curr != idle_thread) {
+		list_push_back (&sleep_list, &curr->elem);
+		// ticks이 negative로 들어올 수 있기에, 양수의 경우만 처리.
+		update_next_tick_to_awake(ticks);
+	}
+
+	// wake_up_thread(&sleep_list);
+	// 현재 thread state를 BLOCKED로 변경하고, ready_list에 있는 다음 thread state를 RUNNING으로 변경
+	do_schedule(THREAD_BLOCKED); 
+	intr_set_level (old_level);
+}
+
+/* next_tick_to_awake(global ticks - 최솟값) 변수를 업데이트 */
+void update_next_tick_to_awake(int64_t ticks) { // 매개변수 ticks = 각 쓰레드 당 local tick
+	if (ticks < next_tick_to_awake) {
+		next_tick_to_awake = ticks;
+	}
+}
+
+/* next_tick_to_awake(global ticks)를 가져오는 함수 */
+int64_t get_next_tick_to_awake(void) {
+	return next_tick_to_awake;
+}
+
+void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
+	next_tick_to_awake = INT64_MAX;			// global ticks 업데이트 하기 위한 초기값
+	struct list_elem *curr = list_begin(&sleep_list);
+	struct list_elem *end = list_end(&sleep_list);
+	struct thread *curr_thread_ptr;
+
+	// sleep_list 탐색(head to tail 방식)
+	while (curr != end) {
+		curr_thread_ptr = list_entry (curr, struct thread, elem); // 탐색하고 있는 스레드 구조체의 포인터를 반환
+		if (curr_thread_ptr->wakeup_tick <= ticks)		// wakeup_tick이 현재 시각보다 작거나 같으면
+			list_push_back(&ready_list, curr);			// ready_list에 탐색하고있는 스레드를 저장
+		// next_tick_to_awake 업데이트
+		update_next_tick_to_awake(curr_thread_ptr->wakeup_tick);
+		curr = curr->next;
+	}
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -534,7 +593,7 @@ do_schedule(int status) {
 			list_entry (list_pop_front (&destruction_req), struct thread, elem);
 		palloc_free_page(victim);
 	}
-	thread_current ()->status = status;
+	thread_current ()->status = status; // 현재의 스레드의 상태를 status로 변경
 	schedule ();
 }
 
