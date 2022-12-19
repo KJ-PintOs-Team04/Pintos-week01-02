@@ -1,0 +1,252 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ACPI_RECLAIMABLE	palloc.c	75;"	d	file:
+APPEND_HILO	palloc.c	76;"	d	file:
+ARENA_MAGIC	malloc.c	46;"	d	file:
+BASE_MEM_THRESHOLD	palloc.c	73;"	d	file:
+CR0_EM	loader.S	/^#define CR0_EM 0x00000004      \/* (Floating-point) Emulation. *\/$/;"	d
+CR0_PE	loader.S	/^#define CR0_PE 0x00000001      \/* Protection Enable. *\/$/;"	d
+CR0_PE	start.S	/^#define CR0_PE 0x00000001$/;"	d
+CR0_PG	loader.S	/^#define CR0_PG 0x80000000      \/* Paging. *\/$/;"	d
+CR0_PG	start.S	/^#define CR0_PG (1 << 31)$/;"	d
+CR0_WP	loader.S	/^#define CR0_WP 0x00010000      \/* Write-Protect enable in kernel mode. *\/$/;"	d
+CR4_PAE	start.S	/^#define CR4_PAE 0x20$/;"	d
+DEPENDS	build/Makefile	/^DEPENDS = $(patsubst %.o,%.d,$(OBJECTS))$/;"	m
+EFER_LME	start.S	/^#define EFER_LME (1 << 8)$/;"	d
+EFER_MSR	start.S	/^#define EFER_MSR 0xC0000080$/;"	d
+EFER_SCE	start.S	/^#define EFER_SCE (1 << 0)$/;"	d
+INTR_CNT	interrupt.c	19;"	d	file:
+LONG_MODE	start.S	/^#define LONG_MODE (1 << 29)$/;"	d
+OBJECTS	build/Makefile	/^OBJECTS = $(patsubst %.c,%.o,$(patsubst %.S,%.o,$(SOURCES)))$/;"	m
+PTE_P	start.S	/^#define PTE_P 0x1$/;"	d
+PTE_W	start.S	/^#define PTE_W 0x2$/;"	d
+REAL	intr-stubs.S	/^#define REAL$/;"	d
+RELOC	start.S	/^#define RELOC(x) (x - LOADER_KERN_BASE)$/;"	d
+SOURCES	build/Makefile	/^SOURCES = $(foreach dir,$(KERNEL_SUBDIRS),$($(dir)_SRC))$/;"	m
+SRCDIR	build/Makefile	/^SRCDIR = ..\/..$/;"	m
+STUB	intr-stubs.S	/^#define STUB(NUMBER, TYPE)                      \\$/;"	d
+THREAD_BASIC	thread.c	25;"	d	file:
+THREAD_MAGIC	thread.c	21;"	d	file:
+TIME_SLICE	thread.c	54;"	d	file:
+USABLE	palloc.c	74;"	d	file:
+__unused	palloc.c	/^	uint32_t __unused[8];$/;"	m	struct:multiboot_info	file:
+_start	start.S	/^_start = RELOC(bootstrap)$/;"	d
+allocate_tid	thread.c	/^allocate_tid (void) {$/;"	f	file:
+area	palloc.c	/^struct area {$/;"	s	file:
+arena	malloc.c	/^struct arena {$/;"	s	file:
+arena_to_block	malloc.c	/^arena_to_block (struct arena *a, size_t idx) {$/;"	f	file:
+arg_cnt	loader.S	/^arg_cnt:$/;"	l
+args	loader.S	/^args:$/;"	l
+base	palloc.c	/^	uint8_t *base;                  \/* Base of pool. *\/$/;"	m	struct:pool	file:
+base_pml4	init.c	/^uint64_t *base_pml4;$/;"	v
+block	malloc.c	/^struct block {$/;"	s	file:
+block_size	malloc.c	/^	size_t block_size;          \/* Size of each element in bytes. *\/$/;"	m	struct:desc	file:
+block_size	malloc.c	/^block_size (void *block) {$/;"	f	file:
+block_to_arena	malloc.c	/^block_to_arena (struct block *b) {$/;"	f	file:
+blocks_per_arena	malloc.c	/^	size_t blocks_per_arena;    \/* Number of blocks in an arena. *\/$/;"	m	struct:desc	file:
+boot_pde1	start.S	/^boot_pde1:$/;"	l
+boot_pde2	start.S	/^boot_pde2:$/;"	l
+boot_pdpt1	start.S	/^boot_pdpt1:$/;"	l
+boot_pdpt2	start.S	/^boot_pdpt2:$/;"	l
+boot_pml4e	start.S	/^boot_pml4e:$/;"	l
+bootstrap	start.S	/^bootstrap:$/;"	l
+bss_init	init.c	/^bss_init (void) {$/;"	f	file:
+calloc	malloc.c	/^calloc (size_t a, size_t b) {$/;"	f
+cond_broadcast	synch.c	/^cond_broadcast (struct condition *cond, struct lock *lock) {$/;"	f
+cond_init	synch.c	/^cond_init (struct condition *cond) {$/;"	f
+cond_signal	synch.c	/^cond_signal (struct condition *cond, struct lock *lock UNUSED) {$/;"	f
+cond_wait	synch.c	/^cond_wait (struct condition *cond, struct lock *lock) {$/;"	f
+desc	malloc.c	/^	struct desc *desc;          \/* Owning descriptor, null for big block. *\/$/;"	m	struct:arena	typeref:struct:arena::desc	file:
+desc	malloc.c	/^struct desc {$/;"	s	file:
+desc_cnt	malloc.c	/^static size_t desc_cnt;         \/* Number of descriptors. *\/$/;"	v	file:
+descs	malloc.c	/^static struct desc descs[10];   \/* Descriptors. *\/$/;"	v	typeref:struct:desc	file:
+destruction_req	thread.c	/^static struct list destruction_req;$/;"	v	typeref:struct:list	file:
+do_iret	thread.c	/^do_iret (struct intr_frame *tf) {$/;"	f
+do_schedule	thread.c	/^do_schedule(int status) {$/;"	f	file:
+dpl	interrupt.c	/^	unsigned dpl : 2;         \/\/ descriptor(meaning new) privilege level$/;"	m	struct:gate	file:
+e820_entry	palloc.c	/^struct e820_entry {$/;"	s	file:
+e820_parse_done	loader.S	/^e820_parse_done:$/;"	l
+elem	synch.c	/^	struct list_elem elem;              \/* List element. *\/$/;"	m	struct:semaphore_elem	typeref:struct:semaphore_elem::list_elem	file:
+end	palloc.c	/^	uint64_t end;$/;"	m	struct:area	file:
+entry_64	start.S	/^entry_64:$/;"	l
+fill_pdes	start.S	/^fill_pdes:$/;"	l
+flags	palloc.c	/^	uint32_t flags;$/;"	m	struct:multiboot_info	file:
+format_filesys	init.c	/^static bool format_filesys;$/;"	v	file:
+free	malloc.c	/^free (void *p) {$/;"	f
+free_cnt	malloc.c	/^	size_t free_cnt;            \/* Free blocks; pages in big block. *\/$/;"	m	struct:arena	file:
+free_elem	malloc.c	/^	struct list_elem free_elem; \/* Free list element. *\/$/;"	m	struct:block	typeref:struct:block::list_elem	file:
+free_list	malloc.c	/^	struct list free_list;      \/* List of free blocks. *\/$/;"	m	struct:desc	typeref:struct:desc::list	file:
+gate	interrupt.c	/^struct gate {$/;"	s	file:
+gdt	loader.S	/^gdt:$/;"	l
+gdt	thread.c	/^static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };$/;"	v	file:
+gdt64	start.S	/^gdt64:$/;"	l
+gdt_desc64	start.S	/^gdt_desc64:$/;"	l
+gdtdesc	loader.S	/^gdtdesc:$/;"	l
+get_next_tick_to_awake	thread.c	/^int64_t get_next_tick_to_awake(void) {$/;"	f
+idle	thread.c	/^idle (void *idle_started_ UNUSED) {$/;"	f	file:
+idle_thread	thread.c	/^static struct thread *idle_thread;$/;"	v	typeref:struct:thread	file:
+idle_ticks	thread.c	/^static long long idle_ticks;    \/* # of timer ticks spent idle. *\/$/;"	v	file:
+idt	interrupt.c	/^static struct gate idt[INTR_CNT];$/;"	v	typeref:struct:gate	file:
+idt_desc	interrupt.c	/^static struct desc_ptr idt_desc = {$/;"	v	typeref:struct:desc_ptr	file:
+in_external_intr	interrupt.c	/^static bool in_external_intr;   \/* Are we processing an external interrupt? *\/$/;"	v	file:
+init_pool	palloc.c	/^init_pool (struct pool *p, void **bm_base, uint64_t start, uint64_t end) {$/;"	f	file:
+init_thread	thread.c	/^init_thread (struct thread *t, const char *name, int priority) {$/;"	f	file:
+initial_thread	thread.c	/^static struct thread *initial_thread;$/;"	v	typeref:struct:thread	file:
+intr_context	interrupt.c	/^intr_context (void) {$/;"	f
+intr_disable	interrupt.c	/^intr_disable (void) {$/;"	f
+intr_dump_frame	interrupt.c	/^intr_dump_frame (const struct intr_frame *f) {$/;"	f
+intr_enable	interrupt.c	/^intr_enable (void) {$/;"	f
+intr_entry	intr-stubs.S	/^intr_entry:$/;"	l
+intr_get_level	interrupt.c	/^intr_get_level (void) {$/;"	f
+intr_handler	interrupt.c	/^intr_handler (struct intr_frame *frame) {$/;"	f
+intr_handlers	interrupt.c	/^static intr_handler_func *intr_handlers[INTR_CNT];$/;"	v	file:
+intr_init	interrupt.c	/^intr_init (void) {$/;"	f
+intr_name	interrupt.c	/^intr_name (uint8_t vec) {$/;"	f
+intr_names	interrupt.c	/^static const char *intr_names[INTR_CNT];$/;"	v	file:
+intr_register_ext	interrupt.c	/^intr_register_ext (uint8_t vec_no, intr_handler_func *handler,$/;"	f
+intr_register_int	interrupt.c	/^intr_register_int (uint8_t vec_no, int dpl, enum intr_level level,$/;"	f
+intr_set_level	interrupt.c	/^intr_set_level (enum intr_level level) {$/;"	f
+intr_stubs	intr-stubs.S	/^intr_stubs:$/;"	l
+intr_yield_on_return	interrupt.c	/^intr_yield_on_return (void) {$/;"	f
+is_thread	thread.c	72;"	d	file:
+ist	interrupt.c	/^	unsigned ist : 3;        \/\/ # args, 0 for interrupt\/trap gates$/;"	m	struct:gate	file:
+kernel_pool	palloc.c	/^static struct pool kernel_pool, user_pool;$/;"	v	typeref:struct:pool	file:
+kernel_thread	thread.c	/^kernel_thread (thread_func *function, void *aux) {$/;"	f	file:
+kernel_ticks	thread.c	/^static long long kernel_ticks;  \/* # of timer ticks in kernel threads. *\/$/;"	v	file:
+len_hi	palloc.c	/^	uint32_t len_hi;$/;"	m	struct:e820_entry	file:
+len_lo	palloc.c	/^	uint32_t len_lo;$/;"	m	struct:e820_entry	file:
+lock	malloc.c	/^	struct lock lock;           \/* Lock. *\/$/;"	m	struct:desc	typeref:struct:desc::lock	file:
+lock	palloc.c	/^	struct lock lock;               \/* Mutual exclusion. *\/$/;"	m	struct:pool	typeref:struct:pool::lock	file:
+lock_acquire	synch.c	/^lock_acquire (struct lock *lock) {$/;"	f
+lock_held_by_current_thread	synch.c	/^lock_held_by_current_thread (const struct lock *lock) {$/;"	f
+lock_init	synch.c	/^lock_init (struct lock *lock) {$/;"	f
+lock_release	synch.c	/^lock_release (struct lock *lock) {$/;"	f
+lock_try_acquire	synch.c	/^lock_try_acquire (struct lock *lock) {$/;"	f
+magic	malloc.c	/^	unsigned magic;             \/* Always set to ARENA_MAGIC. *\/$/;"	m	struct:arena	file:
+main	init.c	/^main (void) {$/;"	f
+make_gate	interrupt.c	62;"	d	file:
+make_intr_gate	interrupt.c	83;"	d	file:
+make_trap_gate	interrupt.c	86;"	d	file:
+malloc	malloc.c	/^malloc (size_t size) {$/;"	f
+malloc_init	malloc.c	/^malloc_init (void) {$/;"	f
+mem_hi	palloc.c	/^	uint32_t mem_hi;$/;"	m	struct:e820_entry	file:
+mem_high	palloc.c	/^	uint32_t mem_high;$/;"	m	struct:multiboot_info	file:
+mem_lo	palloc.c	/^	uint32_t mem_lo;$/;"	m	struct:e820_entry	file:
+mem_low	palloc.c	/^	uint32_t mem_low;$/;"	m	struct:multiboot_info	file:
+mmap_base	palloc.c	/^	uint32_t mmap_base;$/;"	m	struct:multiboot_info	file:
+mmap_len	palloc.c	/^	uint32_t mmap_len;$/;"	m	struct:multiboot_info	file:
+multiboot_info	palloc.c	/^struct multiboot_info {$/;"	s	file:
+next_thread_to_run	thread.c	/^next_thread_to_run (void) {$/;"	f	file:
+next_tick_to_awake	thread.c	/^static int64_t next_tick_to_awake = INT64_MAX; \/\/ global ticks initialize$/;"	v	file:
+no_long_mode	start.S	/^no_long_mode:$/;"	l
+off_15_0	interrupt.c	/^	unsigned off_15_0 : 16;   \/\/ low 16 bits of offset in segment$/;"	m	struct:gate	file:
+off_31_16	interrupt.c	/^	unsigned off_31_16 : 16;  \/\/ high bits of offset in segment$/;"	m	struct:gate	file:
+off_32_63	interrupt.c	/^	uint32_t off_32_63;$/;"	m	struct:gate	file:
+p	interrupt.c	/^	unsigned p : 1;           \/\/ Present$/;"	m	struct:gate	file:
+page_from_pool	palloc.c	/^page_from_pool (const struct pool *pool, void *page) {$/;"	f	file:
+paging_init	init.c	/^paging_init (uint64_t mem_end) {$/;"	f	file:
+palloc_free_multiple	palloc.c	/^palloc_free_multiple (void *pages, size_t page_cnt) {$/;"	f
+palloc_free_page	palloc.c	/^palloc_free_page (void *page) {$/;"	f
+palloc_get_multiple	palloc.c	/^palloc_get_multiple (enum palloc_flags flags, size_t page_cnt) {$/;"	f
+palloc_get_page	palloc.c	/^palloc_get_page (enum palloc_flags flags) {$/;"	f
+palloc_init	palloc.c	/^palloc_init (void) {$/;"	f
+panic	loader.S	/^panic:  .code16			# We only panic in real mode.$/;"	l
+panic_message	loader.S	/^panic_message:$/;"	l
+parse_e820	loader.S	/^parse_e820:$/;"	l
+parse_options	init.c	/^parse_options (char **argv) {$/;"	f	file:
+pdp_for_each	mmu.c	/^pdp_for_each (uint64_t *pdp,$/;"	f	file:
+pdpe_destroy	mmu.c	/^pdpe_destroy (uint64_t *pdpe) {$/;"	f	file:
+pdpe_walk	mmu.c	/^pdpe_walk (uint64_t *pdpe, const uint64_t va, int create) {$/;"	f	file:
+pgdir_destroy	mmu.c	/^pgdir_destroy (uint64_t *pdp) {$/;"	f	file:
+pgdir_for_each	mmu.c	/^pgdir_for_each (uint64_t *pdp, pte_for_each_func *func, void *aux,$/;"	f	file:
+pgdir_walk	mmu.c	/^pgdir_walk (uint64_t *pdp, const uint64_t va, int create) {$/;"	f	file:
+pic_end_of_interrupt	interrupt.c	/^pic_end_of_interrupt (int irq) {$/;"	f	file:
+pic_init	interrupt.c	/^pic_init (void) {$/;"	f	file:
+pml4_activate	mmu.c	/^pml4_activate (uint64_t *pml4) {$/;"	f
+pml4_clear_page	mmu.c	/^pml4_clear_page (uint64_t *pml4, void *upage) {$/;"	f
+pml4_create	mmu.c	/^pml4_create (void) {$/;"	f
+pml4_destroy	mmu.c	/^pml4_destroy (uint64_t *pml4) {$/;"	f
+pml4_for_each	mmu.c	/^pml4_for_each (uint64_t *pml4, pte_for_each_func *func, void *aux) {$/;"	f
+pml4_get_page	mmu.c	/^pml4_get_page (uint64_t *pml4, const void *uaddr) {$/;"	f
+pml4_is_accessed	mmu.c	/^pml4_is_accessed (uint64_t *pml4, const void *vpage) {$/;"	f
+pml4_is_dirty	mmu.c	/^pml4_is_dirty (uint64_t *pml4, const void *vpage) {$/;"	f
+pml4_set_accessed	mmu.c	/^pml4_set_accessed (uint64_t *pml4, const void *vpage, bool accessed) {$/;"	f
+pml4_set_dirty	mmu.c	/^pml4_set_dirty (uint64_t *pml4, const void *vpage, bool dirty) {$/;"	f
+pml4_set_page	mmu.c	/^pml4_set_page (uint64_t *pml4, void *upage, void *kpage, bool rw) {$/;"	f
+pml4e_walk	mmu.c	/^pml4e_walk (uint64_t *pml4e, const uint64_t va, int create) {$/;"	f
+pool	palloc.c	/^struct pool {$/;"	s	file:
+populate_pools	palloc.c	/^populate_pools (struct area *base_mem, struct area *ext_mem) {$/;"	f	file:
+power_off	init.c	/^power_off (void) {$/;"	f
+power_off_when_done	init.c	/^bool power_off_when_done;$/;"	v
+print_stats	init.c	/^print_stats (void) {$/;"	f	file:
+protcseg	loader.S	/^protcseg:$/;"	l
+pt_destroy	mmu.c	/^pt_destroy (uint64_t *pt) {$/;"	f	file:
+pt_for_each	mmu.c	/^pt_for_each (uint64_t *pt, pte_for_each_func *func, void *aux,$/;"	f	file:
+read_command_line	init.c	/^read_command_line (void) {$/;"	f	file:
+read_sector	loader.S	/^read_sector:$/;"	l
+ready_list	thread.c	/^static struct list ready_list;$/;"	v	typeref:struct:list	file:
+realloc	malloc.c	/^realloc (void *old_block, size_t new_size) {$/;"	f
+register_handler	interrupt.c	/^register_handler (uint8_t vec_no, int dpl, enum intr_level level,$/;"	f	file:
+resolve_area_info	palloc.c	/^resolve_area_info (struct area *base_mem, struct area *ext_mem) {$/;"	f	file:
+rsv1	interrupt.c	/^	unsigned rsv1 : 5;        \/\/ reserved(should be zero I guess)$/;"	m	struct:gate	file:
+rsv2	interrupt.c	/^	uint32_t rsv2;$/;"	m	struct:gate	file:
+run_actions	init.c	/^run_actions (char **argv) {$/;"	f	file:
+run_task	init.c	/^run_task (char **argv) {$/;"	f	file:
+running_thread	thread.c	79;"	d	file:
+s	interrupt.c	/^	unsigned s : 1;           \/\/ must be 0 (system)$/;"	m	struct:gate	file:
+schedule	thread.c	/^schedule (void) {$/;"	f	file:
+sema_down	synch.c	/^sema_down (struct semaphore *sema) {$/;"	f
+sema_init	synch.c	/^sema_init (struct semaphore *sema, unsigned value) {$/;"	f
+sema_self_test	synch.c	/^sema_self_test (void) {$/;"	f
+sema_test_helper	synch.c	/^sema_test_helper (void *sema_) {$/;"	f	file:
+sema_try_down	synch.c	/^sema_try_down (struct semaphore *sema) {$/;"	f
+sema_up	synch.c	/^sema_up (struct semaphore *sema) {$/;"	f
+semaphore	synch.c	/^	struct semaphore semaphore;         \/* This semaphore. *\/$/;"	m	struct:semaphore_elem	typeref:struct:semaphore_elem::semaphore	file:
+semaphore_elem	synch.c	/^struct semaphore_elem {$/;"	s	file:
+setup_page_table	start.S	/^setup_page_table:$/;"	l
+size	palloc.c	/^	uint32_t size;$/;"	m	struct:e820_entry	file:
+size	palloc.c	/^	uint64_t size;$/;"	m	struct:area	file:
+sleep_list	thread.c	/^static struct list sleep_list;$/;"	v	typeref:struct:list	file:
+ss	interrupt.c	/^	unsigned ss : 16;         \/\/ segment selector$/;"	m	struct:gate	file:
+start	loader.S	/^start:$/;"	l
+start	palloc.c	/^	uint64_t start;$/;"	m	struct:area	file:
+thread_awake	thread.c	/^void thread_awake(int64_t ticks) { \/\/ 매개변수 ticks - 현재 시각$/;"	f
+thread_block	thread.c	/^thread_block (void) {$/;"	f
+thread_create	thread.c	/^thread_create (const char *name, int priority,$/;"	f
+thread_current	thread.c	/^thread_current (void) {$/;"	f
+thread_exit	thread.c	/^thread_exit (void) {$/;"	f
+thread_get_load_avg	thread.c	/^thread_get_load_avg (void) {$/;"	f
+thread_get_nice	thread.c	/^thread_get_nice (void) {$/;"	f
+thread_get_priority	thread.c	/^thread_get_priority (void) {$/;"	f
+thread_get_recent_cpu	thread.c	/^thread_get_recent_cpu (void) {$/;"	f
+thread_init	thread.c	/^thread_init (void) {$/;"	f
+thread_launch	thread.c	/^thread_launch (struct thread *th) {$/;"	f	file:
+thread_mlfqs	thread.c	/^bool thread_mlfqs;$/;"	v
+thread_name	thread.c	/^thread_name (void) {$/;"	f
+thread_print_stats	thread.c	/^thread_print_stats (void) {$/;"	f
+thread_set_nice	thread.c	/^thread_set_nice (int nice UNUSED) {$/;"	f
+thread_set_priority	thread.c	/^thread_set_priority (int new_priority) {$/;"	f
+thread_sleep	thread.c	/^thread_sleep (int64_t ticks) { \/\/ 매개변수 ticks - 각 쓰레드의 local ticks$/;"	f
+thread_start	thread.c	/^thread_start (void) {$/;"	f
+thread_tests	init.c	/^bool thread_tests;$/;"	v
+thread_tick	thread.c	/^thread_tick (void) {$/;"	f
+thread_ticks	thread.c	/^static unsigned thread_ticks;   \/* # of timer ticks since last yield. *\/$/;"	v	file:
+thread_tid	thread.c	/^thread_tid (void) {$/;"	f
+thread_unblock	thread.c	/^thread_unblock (struct thread *t) {$/;"	f
+thread_yield	thread.c	/^thread_yield (void) {$/;"	f
+threads_SRC	targets.mk	/^threads_SRC  = threads\/init.c		# Main program.$/;"	m
+tid_lock	thread.c	/^static struct lock tid_lock;$/;"	v	typeref:struct:lock	file:
+type	interrupt.c	/^	unsigned type : 4;        \/\/ type(STS_{TG,IG32,TG32})$/;"	m	struct:gate	file:
+type	palloc.c	/^	uint32_t type;$/;"	m	struct:e820_entry	file:
+update_next_tick_to_awake	thread.c	/^void update_next_tick_to_awake(int64_t ticks) { \/\/ 매개변수 ticks = 각 쓰레드 당 local tick$/;"	f
+usage	init.c	/^usage (void) {$/;"	f	file:
+used_map	palloc.c	/^	struct bitmap *used_map;        \/* Bitmap of free pages. *\/$/;"	m	struct:pool	typeref:struct:pool::bitmap	file:
+user_page_limit	palloc.c	/^size_t user_page_limit = SIZE_MAX;$/;"	v
+user_pool	palloc.c	/^static struct pool kernel_pool, user_pool;$/;"	v	typeref:struct:	file:
+user_ticks	thread.c	/^static long long user_ticks;    \/* # of timer ticks in user programs. *\/$/;"	v	file:
+yield_on_return	interrupt.c	/^static bool yield_on_return;    \/* Should we yield on interrupt return? *\/$/;"	v	file:
+zero	intr-stubs.S	/^#define zero pushq $0;$/;"	d

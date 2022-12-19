@@ -95,7 +95,7 @@ timer_sleep (int64_t ticks) { // 매개변수 ticks - 각 쓰레드가 sleep 하
 	ASSERT (intr_get_level () == INTR_ON);
 	// while (timer_elapsed (start) < ticks)
 	// 	thread_yield ();
-	if (timer_elapsed (start) < ticks) // timer_elapsed (start) - 경과 시간
+	if (timer_elapsed(start) < ticks)
 		thread_sleep(start + ticks); // (start + ticks) => wakeup 시각(local ticks)
 }
 
