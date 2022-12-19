@@ -314,6 +314,7 @@ thread_yield (void) {
 	intr_set_level (old_level);
 }
 
+/* 스레드를 sleep 상태로 만들고 sleep_list에 넣고 context_switching 발생 */
 void
 thread_sleep (int64_t ticks) { // 매개변수 ticks - 각 쓰레드의 local ticks
 	struct thread *curr = thread_current ();
@@ -359,8 +360,10 @@ void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
 	// sleep_list 탐색(head to tail 방식)
 	while (curr != end) {
 		curr_thread_ptr = list_entry (curr, struct thread, elem); // 탐색하고 있는 스레드 구조체의 포인터를 반환
-		if (curr_thread_ptr->wakeup_tick <= ticks)		// wakeup_tick이 현재 시각보다 작거나 같으면
-			list_push_back(&ready_list, curr);			// ready_list에 탐색하고있는 스레드를 저장
+		if (curr_thread_ptr->wakeup_tick <= ticks) {		// wakeup_tick이 현재 시각보다 작거나 같으면
+			thread_unblock(curr_thread_ptr);				
+			list_remove(curr);
+		}
 		// next_tick_to_awake 업데이트
 		update_next_tick_to_awake(curr_thread_ptr->wakeup_tick);
 		curr = curr->next;
