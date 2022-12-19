@@ -362,11 +362,14 @@ void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
 		curr_thread_ptr = list_entry (curr, struct thread, elem); // 탐색하고 있는 스레드 구조체의 포인터를 반환
 		if (curr_thread_ptr->wakeup_tick <= ticks) {		// wakeup_tick이 현재 시각보다 작거나 같으면
 			thread_unblock(curr_thread_ptr);				
-			list_remove(curr);
+			curr = list_remove(curr);
 		}
-		// next_tick_to_awake 업데이트
-		update_next_tick_to_awake(curr_thread_ptr->wakeup_tick);
-		curr = curr->next;
+		else {
+			// next_tick_to_awake 업데이트
+			update_next_tick_to_awake(curr_thread_ptr->wakeup_tick);
+			curr = curr->next;
+		}
+		
 	}
 }
 
