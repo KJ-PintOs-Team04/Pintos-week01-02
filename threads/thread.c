@@ -328,8 +328,8 @@ thread_sleep (int64_t ticks) { // 매개변수 ticks - 각 쓰레드의 local ti
 
 	// 현재 스레드를 sleep_list에 삽입 
 	if (curr != idle_thread) {
-		list_push_back (&sleep_list, &curr->elem);
-		// ticks이 negative로 들어올 수 있기에, 양수의 경우만 처리.
+		curr->wakeup_tick = ticks;
+		list_push_back(&sleep_list, &curr->elem);
 		update_next_tick_to_awake(ticks);
 	}
 
@@ -361,8 +361,8 @@ void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
 	while (curr != end) {
 		curr_thread_ptr = list_entry (curr, struct thread, elem); // 탐색하고 있는 스레드 구조체의 포인터를 반환
 		if (curr_thread_ptr->wakeup_tick <= ticks) {		// wakeup_tick이 현재 시각보다 작거나 같으면
-			thread_unblock(curr_thread_ptr);				
 			curr = list_remove(curr);
+			thread_unblock(curr_thread_ptr);				
 		}
 		else {
 			// next_tick_to_awake 업데이트
