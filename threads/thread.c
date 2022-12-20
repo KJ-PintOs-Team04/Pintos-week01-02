@@ -309,10 +309,7 @@ cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNU
 	first_priority = list_entry (a, struct thread, elem) -> priority;
 	second_priority = list_entry (b, struct thread, elem) -> priority;
 
-	if (first_priority > second_priority)
-		return 1;
-	else
-		return 0;
+	return (first_priority > second_priority);
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
