@@ -376,9 +376,10 @@ void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
 	while (curr != end) {
 		curr_thread_ptr = list_entry (curr, struct thread, elem); // 탐색하고 있는 스레드 구조체의 포인터를 반환
 		if (curr_thread_ptr->wakeup_tick <= ticks) {		// wakeup_tick이 현재 시각보다 작거나 같으면
-			curr = list_remove(curr);
-			thread_unblock(curr_thread_ptr);				
+			thread_unblock(curr_thread_ptr);				// 탐색하고 있는 스레드를 unblock 처리(ready_list에 대입)
+			curr = list_remove(curr);						// 탐색하고 있는 스레드를 sleep_list에서 삭제(prev_thread, next_thread 를 더블 링크드리스트로 연결)
 		}
+		// 현재 시각(ticks)보다 크다면 계속 sleep 상태 유지
 		else {
 			// next_tick_to_awake 업데이트
 			update_next_tick_to_awake(curr_thread_ptr->wakeup_tick);
