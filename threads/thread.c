@@ -358,11 +358,12 @@ void update_next_tick_to_awake(int64_t ticks) { // 매개변수 ticks = 각 쓰�
 	}
 }
 
-/* next_tick_to_awake(global ticks)를 가져오는 함수 */
+/* next_tick_to_awake(global ticks) 반환 */
 int64_t get_next_tick_to_awake(void) {
 	return next_tick_to_awake;
 }
 
+/* sleep_list에 있는 스레드 중 sleep이 끝났으면 ready_list에 추가 */
 void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
 	next_tick_to_awake = INT64_MAX;			// global ticks 업데이트 하기 위한 초기값
 	struct list_elem *curr = list_begin(&sleep_list);
@@ -389,12 +390,11 @@ void thread_awake(int64_t ticks) { // 매개변수 ticks - 현재 시각
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	/* ready_list의 최대 우선순위를 가진 스레드와 현재 스레드의 우선순위 비교 및 스케줄링 */
 	int max_priority = list_entry(list_begin(&ready_list), struct thread, elem) -> priority;
-	// thread_current()->priority = new_priority;
 	thread_current()->init_priority = new_priority;
 	refresh_priority();
-	// donate_priority();
+
+	/* ready_list의 최대 우선순위를 가진 스레드와 현재 스레드의 우선순위 비교 및 스케줄링 */
 	if (new_priority < max_priority)
 		thread_yield();
 }
@@ -405,7 +405,7 @@ thread_get_priority (void) {
 	return thread_current ()->priority;
 }
 
-/* priority donation을 수행하는 함수(nested depth는 8로 제한) */
+/* priority donation을 수행(nested depth는 8로 제한) */
 void
 donate_priority (void) {
 	struct thread *t = thread_current();
@@ -421,6 +421,7 @@ donate_priority (void) {
 	}
 }
 
+/* 현재 스레드의 우선순위를 donations를 고려하여 변경 */
 void
 refresh_priority (void) {
 	struct thread *t = thread_current();
@@ -435,6 +436,7 @@ refresh_priority (void) {
 	t->priority = (t->priority < donation_priority) ? donation_priority : t->priority;
 }
 
+/* donations에서 해당 lock을 기다리고 있는 elem 삭제 */
 void
 remove_with_lock (struct lock *lock) {
 	struct list_elem *e;

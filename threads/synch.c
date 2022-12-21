@@ -205,25 +205,17 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
-	// enum intr_level old_level;
-
-	// old_level = intr_disable();
-	// if (!lock->holder && lock->holder->priority < thread_get_priority()) {
-	// 	lock->holder->priority = thread_get_priority();
-	// 	// donation list 에 priority을 위임한 쓰레드를 저장
-	// 	list_insert_ordered(&lock->holder->donation, &thread_current()->donation_elem, cmp_sema_priority, NULL);
-	// }
+	
 	if (lock -> holder) {
 		thread_current()->wait_on_lock = lock; // 현재 스레드에 획득하기를 기다리는 lock 주소 저장
 
 		// priority donation
-		list_insert_ordered(&lock->holder->donations, &thread_current()->d_elem, cmp_sema_priority, NULL);	
+		list_insert_ordered(&lock->holder->donations, &thread_current()->d_elem, cmp_priority, NULL);	
 		donate_priority();
 	}
 	sema_down(&lock->semaphore);
 	thread_current ()->wait_on_lock = NULL;
 	lock->holder = thread_current ();
-	// intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -253,7 +245,6 @@ lock_try_acquire (struct lock *lock) {
    handler. */
 void
 lock_release (struct lock *lock) {
-	struct thread *t;
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
@@ -261,7 +252,6 @@ lock_release (struct lock *lock) {
 
 	remove_with_lock(lock);
 	refresh_priority();
-	// remove_with_lock();
 	sema_up(&lock->semaphore);
 }
 
@@ -321,7 +311,7 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	sema_init (&waiter.semaphore, 0);
-	list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sema_priority, NULL);
+	list_insert_ordered(&cond->waiters, &waiter.elem, cmp_priority, NULL);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
@@ -343,7 +333,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 
 	
 	if (!list_empty(&cond->waiters)) {
-		list_sort(&cond->waiters, cmp_sema_priority, NULL);
+		list_sort(&cond->waiters, cmp_priority, NULL);
 		sema_up (&(list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem , elem)->semaphore));
 	}
