@@ -91,10 +91,13 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-	int64_t wakeup_tick; 				/* 스레드가 꺠어나야할 tick */ 
+	int init_priority;                  /* Init Priority. */
+	int64_t wakeup_tick;                /* 스레드가 꺠어나야할 tick */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-
+	struct lock *wait_on_lock;          /* 해당 스레드가 대기하는 lock */
+	struct list donations;              /* 해당 스레드의 priority donation 정보 */
+	struct list_elem d_elem;            /* donation element */
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -139,8 +142,11 @@ int64_t get_next_tick_to_awake(void); /* thread.c의 next_tick_to_awake 반환 *
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+void donate_priority(void);
+void refresh_priority(void);
+void remove_with_lock(struct lock *lock);
 
-int thread_get_nice (void);
+int thread_get_nice(void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);

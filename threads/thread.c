@@ -392,6 +392,9 @@ thread_set_priority (int new_priority) {
 	/* ready_list의 최대 우선순위를 가진 스레드와 현재 스레드의 우선순위 비교 및 스케줄링 */
 	int max_priority = list_entry(list_begin(&ready_list), struct thread, elem) -> priority;
 	thread_current()->priority = new_priority;
+	thread_current()->init_priority = new_priority;
+	refresh_priority();
+	// donate_priority();
 	if (new_priority < max_priority)
 		thread_yield();
 }
@@ -400,6 +403,51 @@ thread_set_priority (int new_priority) {
 int
 thread_get_priority (void) {
 	return thread_current ()->priority;
+}
+
+/* priority donation을 수행하는 함수(nested depth는 8로 제한) */
+void
+donate_priority (void) {
+	struct thread *t = thread_current();
+
+	int depth = 1;
+	while (depth <= 8) {
+		int curr_priority = t->priority;
+		if (t->wait_on_lock == NULL)
+			break;
+		t->wait_on_lock->holder->priority = curr_priority;
+		t = t->wait_on_lock->holder;
+		depth++;
+	}
+}
+
+void
+refresh_priority (void) {
+	struct thread *t = thread_current();
+	int donation_priority;
+
+	t->priority = t->init_priority;
+	if (list_empty(&t->donations))
+		return;
+
+	list_sort(&t->donations, cmp_priority, NULL);
+	donation_priority = list_entry(list_begin(&t->donations), struct thread, d_elem)->priority;
+	t->priority = (t->priority < donation_priority) ? donation_priority : t->priority;
+}
+
+void
+remove_with_lock (struct lock *lock) {
+	struct list_elem *e;
+	struct thread *curr = thread_current();
+
+	if (list_empty(&curr->donations))
+		return;
+
+	for (e = list_begin(&curr->donations); e != list_end(&curr->donations); e = list_next(e)) {
+		struct thread *t = list_entry(e, struct thread, d_elem);
+		if (lock == t->wait_on_lock)
+			list_remove(&e);
+	}
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -490,7 +538,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
+	t->init_priority = priority;
+	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
+	list_init (&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
