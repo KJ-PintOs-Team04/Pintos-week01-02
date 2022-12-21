@@ -205,16 +205,16 @@ lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
-	enum intr_level old_level;
+	// enum intr_level old_level;
 
-	old_level = intr_disable();
+	// old_level = intr_disable();
 	// if (!lock->holder && lock->holder->priority < thread_get_priority()) {
 	// 	lock->holder->priority = thread_get_priority();
 	// 	// donation list 에 priority을 위임한 쓰레드를 저장
 	// 	list_insert_ordered(&lock->holder->donation, &thread_current()->donation_elem, cmp_sema_priority, NULL);
 	// }
 	if (lock -> holder) {
-		thread_current()->wait_on_lock = &lock; // 현재 스레드에 획득하기를 기다리는 lock 주소 저장
+		thread_current()->wait_on_lock = lock; // 현재 스레드에 획득하기를 기다리는 lock 주소 저장
 
 		// priority donation
 		list_insert_ordered(&lock->holder->donations, &thread_current()->d_elem, cmp_sema_priority, NULL);	
@@ -223,7 +223,7 @@ lock_acquire (struct lock *lock) {
 	sema_down(&lock->semaphore);
 	thread_current ()->wait_on_lock = NULL;
 	lock->holder = thread_current ();
-	intr_set_level(old_level);
+	// intr_set_level(old_level);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -259,7 +259,7 @@ lock_release (struct lock *lock) {
 
 	lock->holder = NULL;
 
-	remove_with_lock(&lock);
+	remove_with_lock(lock);
 	refresh_priority();
 	// remove_with_lock();
 	sema_up(&lock->semaphore);

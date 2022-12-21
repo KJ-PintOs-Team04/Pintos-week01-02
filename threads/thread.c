@@ -391,7 +391,7 @@ void
 thread_set_priority (int new_priority) {
 	/* ready_list의 최대 우선순위를 가진 스레드와 현재 스레드의 우선순위 비교 및 스케줄링 */
 	int max_priority = list_entry(list_begin(&ready_list), struct thread, elem) -> priority;
-	thread_current()->priority = new_priority;
+	// thread_current()->priority = new_priority;
 	thread_current()->init_priority = new_priority;
 	refresh_priority();
 	// donate_priority();
@@ -439,14 +439,14 @@ void
 remove_with_lock (struct lock *lock) {
 	struct list_elem *e;
 	struct thread *curr = thread_current();
-
+	
 	if (list_empty(&curr->donations))
 		return;
 
 	for (e = list_begin(&curr->donations); e != list_end(&curr->donations); e = list_next(e)) {
 		struct thread *t = list_entry(e, struct thread, d_elem);
 		if (lock == t->wait_on_lock)
-			list_remove(&e);
+			list_remove(e);
 	}
 }
 
