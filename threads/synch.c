@@ -49,15 +49,6 @@ sema_init (struct semaphore *sema, unsigned value) {
 	list_init (&sema->waiters);
 }
 
-
-bool cmp_sema_priority (const struct list_elem *a, const struct list_elem *b, void *aux) {
-	int first_priority, second_priority;
-
-	first_priority = list_entry (a, struct thread, elem) -> priority;
-	second_priority = list_entry (b, struct thread, elem) -> priority;
-
-	return (first_priority > second_priority);
-}
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
    to become positive and then atomically decrements it.
 
@@ -75,8 +66,9 @@ sema_down (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	while (sema->value == 0) {
-		list_insert_ordered(&sema->waiters, &thread_current()->elem, cmp_sema_priority, NULL);
-		thread_block ();
+		// waiters에 추가
+		list_push_back(&sema->waiters, &thread_current()->elem);
+		thread_block();
 	}
 	sema->value--;
 	intr_set_level (old_level);
@@ -119,7 +111,7 @@ sema_up (struct semaphore *sema) {
 	ASSERT (sema != NULL);
 
 	old_level = intr_disable ();
-	list_sort(&sema->waiters, cmp_sema_priority, NULL);
+	list_sort(&sema->waiters, cmp_priority, NULL);
 	if (!list_empty(&sema->waiters))
 	{
 		t = list_entry(list_pop_front(&sema->waiters), struct thread, elem);
@@ -214,7 +206,7 @@ lock_acquire (struct lock *lock) {
 		donate_priority();
 	}
 	sema_down(&lock->semaphore);
-	thread_current ()->wait_on_lock = NULL;
+	thread_current ()->wait_on_lock = NULL; 
 	lock->holder = thread_current ();
 }
 
@@ -270,6 +262,10 @@ struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
 	struct semaphore semaphore;         /* This semaphore. */
 };
+
+/* --------------------------------------------------- */
+//               condition variable 미완성				 //
+/* --------------------------------------------------- */
 
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
@@ -353,4 +349,13 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
+}
+
+bool cmp_sema_priority (const struct list_elem *a, const struct list_elem *b, void *aux) {
+	int first_priority, second_priority;
+
+	first_priority = list_entry (a, struct thread, elem) -> priority;
+	second_priority = list_entry (b, struct thread, elem) -> priority;
+
+	return (first_priority > second_priority);
 }

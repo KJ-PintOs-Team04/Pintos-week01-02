@@ -346,7 +346,6 @@ thread_sleep (int64_t ticks) { // 매개변수 ticks - 각 쓰레드의 local ti
 		update_next_tick_to_awake(ticks);
 	}
 
-	// 현재 thread state를 BLOCKED로 변경하고, ready_list에 있는 다음 thread state를 RUNNING으로 변경
 	do_schedule(THREAD_BLOCKED); 
 	intr_set_level (old_level);
 }
@@ -415,8 +414,8 @@ donate_priority (void) {
 		int curr_priority = t->priority;
 		if (t->wait_on_lock == NULL)
 			break;
-		t->wait_on_lock->holder->priority = curr_priority;
-		t = t->wait_on_lock->holder;
+		t->wait_on_lock->holder->priority = curr_priority; // priority donate
+		t = t->wait_on_lock->holder; // 다음 lock의 holder로 갱신
 		depth++;
 	}
 }
@@ -427,13 +426,14 @@ refresh_priority (void) {
 	struct thread *t = thread_current();
 	int donation_priority;
 
-	t->priority = t->init_priority;
+	t->priority = t->init_priority; // donation 전 우선순위로 초기화
+	
 	if (list_empty(&t->donations))
 		return;
 
 	list_sort(&t->donations, cmp_priority, NULL);
 	donation_priority = list_entry(list_begin(&t->donations), struct thread, d_elem)->priority;
-	t->priority = (t->priority < donation_priority) ? donation_priority : t->priority;
+	t->priority = (t->priority < donation_priority) ? donation_priority : t->priority; // donation에 따라 우선순위 갱신
 }
 
 /* donations에서 해당 lock을 기다리고 있는 elem 삭제 */
@@ -447,6 +447,7 @@ remove_with_lock (struct lock *lock) {
 
 	for (e = list_begin(&curr->donations); e != list_end(&curr->donations); e = list_next(e)) {
 		struct thread *t = list_entry(e, struct thread, d_elem);
+		// lock을 기다리고 있는 스레드를 만나면  
 		if (lock == t->wait_on_lock)
 			list_remove(e);
 	}
