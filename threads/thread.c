@@ -445,11 +445,15 @@ remove_with_lock (struct lock *lock) {
 	if (list_empty(&curr->donations))
 		return;
 
-	for (e = list_begin(&curr->donations); e != list_end(&curr->donations); e = list_next(e)) {
+	e = list_begin(&curr->donations);
+	while (e != list_end(&curr->donations))
+	{
 		struct thread *t = list_entry(e, struct thread, d_elem);
 		// lock을 기다리고 있는 스레드를 만나면  
 		if (lock == t->wait_on_lock)
-			list_remove(e);
+			e = list_remove(e);
+		else
+			e = list_next(e);
 	}
 }
 
