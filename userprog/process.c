@@ -55,7 +55,7 @@ process_create_initd (const char *file_name) {
 
 	/* Create a new thread to execute FILE_NAME. */
 	// tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
-	tid = thread_create (p_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create(p_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -171,7 +171,7 @@ process_exec (void *f_name) {
     char *token, *save_ptr;
 	int argc = 0;
 	char *argv[10];
-	
+
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -191,10 +191,8 @@ process_exec (void *f_name) {
 		argc += 1;
 	}
 	/* And then load the binary */
-	success = load (argv[0], &_if);
-
+	success = load (file_name, &_if);
 	/* If load failed, quit. */
-	palloc_free_page (file_name);
 	if (!success)
 		return -1;
 
@@ -205,9 +203,13 @@ process_exec (void *f_name) {
 	   in the form of a `struct intr_frame',
        we just point the stack pointer (%esp) to our stack frame
        and jump to it. */
-	argument_stack(argv, argc, &_if.rsp);
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
+	argument_stack(argv, argc, &_if.rsp);
+	_if.R.rdi = argc;
+	_if.R.rsi = _if.rsp + 8;
+	palloc_free_page (file_name);
+
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -285,31 +287,30 @@ process_activate (struct thread *next) {
 
 void argument_stack(char **argv ,int argc ,void **esp) {
 	int *argument_addr[10];
-
 	for (int i = argc - 1; i >= 0; i--) {
 		int arg_len = strlen(argv[i]) + 1;
 		*esp -= arg_len;
 		argument_addr[argc] = *esp;
-		memcpy(esp, argv[i], arg_len);
+		memcpy(*esp, argv[i], arg_len);
 	}
 
-	while ((int)*esp % 8 != 0) {
+	while ((int)*esp % 8 != 0) 
 		*esp -= 1;
-		memcpy(*esp, 0, sizeof(uint8_t *));
-	}
+	memset(*esp, 0, sizeof(uint8_t));
+
 
 	for (int i = argc; i >= 0; i--) {
 		if (i == argc) {
 			*esp -= 8;
-			memcpy(*esp, 0, sizeof(char *));
+			memset(*esp, 0, sizeof(char *));
 		}
 		else {
 			*esp -= 8;
-			memcpy(*esp, argument_addr[i], sizeof(char *));
+			memcpy(*esp, &argument_addr[i], sizeof(char *));
 		}
 	}
 	*esp -= 8;
-	memcpy(*esp, 0, sizeof(void *));
+	memset(*esp, 0, sizeof(void *));
 }
 
 
