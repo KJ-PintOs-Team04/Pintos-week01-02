@@ -564,7 +564,12 @@ next_thread_to_run (void) {
 		return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
-/* Use iretq to launch the thread */
+/* Use iretq to launch the thread
+   (movq SRC, DEST): SRC에서 DEST로 데이터를 옮기겠다.(q: quadword의 약자로 8byte를 의미)
+   (movw SRC, DEST): SRC에서 DEST로 데이터를 옮기겠다.(w: word의 약자로 2byte를 의미)
+   (addq SRC, DEST): DEST = DEST + SRC
+   iretq: 인터럽트 처리를 완료하고 이전에 수행하던 코드로 복원 
+*/
 void
 do_iret (struct intr_frame *tf) {
 	__asm __volatile(
