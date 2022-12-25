@@ -1,4 +1,5 @@
 #include "userprog/process.h"
+#include "lib/stdio.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -40,7 +41,7 @@ process_init (void) {
  * Notice that THIS SHOULD BE CALLED ONCE. */
 tid_t
 process_create_initd (const char *file_name) {
-	char *fn_copy;
+	char *fn_copy, *p_name, *save_ptr;
 	tid_t tid;
 
 	/* Make a copy of FILE_NAME.
@@ -50,8 +51,11 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	p_name = strtok_r(file_name, " ", &save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	// tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create (p_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -164,11 +168,16 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-
+    char *token, *save_ptr;
+	int argc = 0;
+	char *argv[10];
+	
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
 	struct intr_frame _if;
+
+	memset(&_if, 0, sizeof(_if));
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
@@ -176,13 +185,28 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+	/* Parse the command line (Use strtok_r()) */
+	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+		argv[argc] = token;
+		argc += 1;
+	}
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (argv[0], &_if);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
+
+	/* Set up stack */
+	/* Start the user process by simulating a return from an
+       interrupt, implemented by intr_exit (inthreads/intr-stubs.S).
+	   Because intr_exit takes all of its arguments on the stack 
+	   in the form of a `struct intr_frame',
+       we just point the stack pointer (%esp) to our stack frame
+       and jump to it. */
+	argument_stack(argv, argc, &_if.rsp);
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -204,6 +228,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while (1) {}
 	return -1;
 }
 
@@ -256,6 +281,39 @@ process_activate (struct thread *next) {
 	/* Set thread's kernel stack for use in processing interrupts. */
 	tss_update (next);
 }
+
+
+void argument_stack(char **argv ,int argc ,void **esp) {
+	int *argument_addr[10];
+
+	for (int i = argc - 1; i >= 0; i--) {
+		int arg_len = strlen(argv[i]) + 1;
+		*esp -= arg_len;
+		argument_addr[argc] = *esp;
+		memcpy(esp, argv[i], arg_len);
+	}
+
+	while ((int)*esp % 8 != 0) {
+		*esp -= 1;
+		memcpy(*esp, 0, sizeof(uint8_t *));
+	}
+
+	for (int i = argc; i >= 0; i--) {
+		if (i == argc) {
+			*esp -= 8;
+			memcpy(*esp, 0, sizeof(char *));
+		}
+		else {
+			*esp -= 8;
+			memcpy(*esp, argument_addr[i], sizeof(char *));
+		}
+	}
+	*esp -= 8;
+	memcpy(*esp, 0, sizeof(void *));
+}
+
+
+
 
 /* We load ELF binaries.  The following definitions are taken
  * from the ELF specification, [ELF1], more-or-less verbatim.  */
@@ -408,11 +466,11 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Set up stack. */
-	if (!setup_stack (if_))
+	if (!setup_stack (if_)) /* initializing user stack */
 		goto done;
 
 	/* Start address. */
-	if_->rip = ehdr.e_entry;
+	if_->rip = ehdr.e_entry; /* initialize entry point */
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
