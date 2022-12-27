@@ -156,6 +156,6 @@ page_fault (struct intr_frame *f) { // invalid 한 포인터가 발생시킨 'pa
 			write ? "writing" : "reading",
 			user ? "user" : "kernel");
 	kill (f);
-	// exit(-1)?
+	exit(-1);
 }
 

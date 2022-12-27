@@ -314,11 +314,14 @@ struct file *process_get_file (int fd) {
 	struct file *fileptr;
 
 	curr = thread_current();
-	fileptr = curr->fdt[fd];
-	if (fileptr)
-		return fileptr;
-	else
-		return NULL;
+	if (fd >= 0 && fd < 64) {
+		fileptr = curr->fdt[fd];
+		if (fileptr)
+			return fileptr;
+		else
+			return NULL;
+	}
+	return NULL;
 }
 
 /* FDT에서 해당하는 파일 객체를 제거 */
