@@ -106,10 +106,17 @@ struct thread {
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
 #endif
-
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
+	/* 추가한 부분 */
+	int load_status;                    /* load status */
+	int exit_status;                    /* exit status */
+	struct semaphore sema;              /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
+	struct list child_list;             /* 자식 프로세스 리스트의 대한 필드 추가 */
+	struct list_elem child_elem;
+	struct file *fdt[64];               /* per process - file descriptor table, array of pointer to struct file */
+	int next_fd;						/* fdt index로 작용 */
 };
 
 /* If false (default), use round-robin scheduler.

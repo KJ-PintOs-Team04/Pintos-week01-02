@@ -210,6 +210,13 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* 자료구조 초기화
+	   1. 부모 프로세스 디스크립터 포인터 저장
+	   2. load, exit 저장
+	   3. 세마포어 초기화(sema_init)
+	   4. 부모 프로세스의 자식 리스트에 생성된 스레드 추가
+	   */
+
 	/* Add to run queue. */
 	thread_unblock (t);
 	// 생성된 스레드의 우선순위와 현재 스레드의 우선순위 비교를 통해 스케줄링
@@ -541,7 +548,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
-	list_init (&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
+	memset(t->fdt, 0, sizeof(struct *file) * 64); // FDT(file descriptor table) 0으로 초기화
+	t->next_fd = 2
+	list_init(&t->donations);	// 각 스레드마다 donation list를 가지고 있음(priority 기억)
+	list_init (&t->child_list); /* 자식 리스트 초기화 */
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

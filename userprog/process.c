@@ -185,13 +185,14 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
-	/* Parse the command line (Use strtok_r()) */
+	/* Parse the command line */
 	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
 		argv[argc] = token;
 		argc += 1;
 	}
+
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (argv[0], &_if);
 	/* If load failed, quit. */
 	if (!success)
 		return -1;
@@ -207,8 +208,8 @@ process_exec (void *f_name) {
 	argument_stack(argv, argc, &_if.rsp);
 	_if.R.rdi = argc;
 	_if.R.rsi = _if.rsp + 8;
-	palloc_free_page (file_name);
 
+	palloc_free_page (file_name);
 	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
 	do_iret (&_if);
@@ -242,7 +243,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	
 	process_cleanup ();
 }
 
@@ -284,13 +285,59 @@ process_activate (struct thread *next) {
 	tss_update (next);
 }
 
+/* 파일 객체에 대한 fd 생성 */
+int process_add_file (struct file *f) {
+	struct thread *curr;
+	int fd;
+
+	curr = thread_current();
+	fd = curr->next_fd;
+	curr->fdt[fd] = f;
+	while(curr->fdt[curr->next_fd] != NULL)
+		curr->next_fd++;
+	// for (int i = 2; i < curr->next_fd; i++) {
+	// 	if (curr->fdt[i] == NULL) {
+	// 		curr->fdt[i] = f;
+	// 		fd = i;
+	// 		break;
+	// 	}
+	// 	fd = curr->next_fd;
+	// 	curr->fdt[curr->next_fd++] = f;
+
+	// }
+	return fd;
+}
+
+/* 프로세스의 FDT를 검색하여 파일 객체의 주소를 리턴 */
+struct file *process_get_file (int fd) {
+	struct thread *curr;
+	struct file *fileptr;
+
+	curr = thread_current();
+	fileptr = curr->fdt[fd];
+	if (fileptr)
+		return fileptr;
+	else
+		return NULL;
+}
+
+/* FDT에서 해당하는 파일 객체를 제거 */
+void process_close_file (int fd) {
+	struct thread *curr;
+
+	curr = thread_current();
+	curr->fdt[fd] = NULL;
+	if (curr->next_fd > fd)
+		curr->next_fd = fd;
+}
 
 void argument_stack(char **argv ,int argc ,void **esp) {
-	int *argument_addr[10];
+	char *argument_addr[10];
+
 	for (int i = argc - 1; i >= 0; i--) {
 		int arg_len = strlen(argv[i]) + 1;
 		*esp -= arg_len;
-		argument_addr[argc] = *esp;
+		argument_addr[i] = *esp;
 		memcpy(*esp, argv[i], arg_len);
 	}
 
@@ -312,8 +359,6 @@ void argument_stack(char **argv ,int argc ,void **esp) {
 	*esp -= 8;
 	memset(*esp, 0, sizeof(void *));
 }
-
-
 
 
 /* We load ELF binaries.  The following definitions are taken

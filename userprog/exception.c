@@ -117,7 +117,7 @@ kill (struct intr_frame *f) {
    description of "Interrupt 14--Page Fault Exception (#PF)" in
    [IA32-v3a] section 5.15 "Exception and Interrupt Reference". */
 static void
-page_fault (struct intr_frame *f) {
+page_fault (struct intr_frame *f) { // invalid 한 포인터가 발생시킨 'page_fault'를 handling하는 함수  
 	bool not_present;  /* True: not-present page, false: writing r/o page. */
 	bool write;        /* True: access was write, false: access was read. */
 	bool user;         /* True: access by user, false: access by kernel. */
@@ -156,5 +156,6 @@ page_fault (struct intr_frame *f) {
 			write ? "writing" : "reading",
 			user ? "user" : "kernel");
 	kill (f);
+	// exit(-1)?
 }
 
