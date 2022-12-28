@@ -243,7 +243,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	
+	// TODO: Modify current process to close the running file. (카이스트 ppt 67페이지 참고)
 	process_cleanup ();
 }
 
@@ -530,11 +530,12 @@ load (const char *file_name, struct intr_frame *if_) {
 	success = true;
 
 done:
+	/* Re-enables writing to executable */
+	file_allow_write(file);
 	/* We arrive here whether the load is successful or not. */
 	file_close (file);
 
-	/* Re-enables writing to executable */
-	file_allow_write(file);
+
 
 	return success;
 }
