@@ -113,6 +113,7 @@ struct thread {
 	int load_status;                    /* load status */
 	int exit_status;                    /* exit status */
 	struct semaphore sema;              /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
+	struct thread *parent;              /* 부모 프로세스에 대한 필드 */
 	struct list child_list;             /* 자식 프로세스 리스트의 대한 필드 추가 */
 	struct list_elem child_elem;
 	struct file *fdt[64];               /* per process - file descriptor table, array of pointer to struct file */
