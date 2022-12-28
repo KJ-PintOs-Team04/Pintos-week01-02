@@ -288,17 +288,36 @@ process_activate (struct thread *next) {
 	/* Set thread's kernel stack for use in processing interrupts. */
 	tss_update (next);
 }
-struct thread *get_child_process() {
+
+/* 자식 프로세스 디스크립터를 검색하는 함수 */
+struct thread *get_child_process(tid_t tid) {
 	struct thread *t;
 	struct list_elem *e;
-	tid_t tid;
-	tid = thread_current()->tid;
+
 	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
 		t = list_entry(e, struct thread, child_elem);
 		if (tid == t->tid)
 			return t;
 	}
 	return NULL;
+}
+
+/* 자식 프로세스 디스크립터를 삭제하는 함수 */
+void remove_child_process(tid_t tid) {
+	struct thread *t;
+	struct list_elem *e;
+
+	if (list_empty(&curr->child_list))
+		return;
+
+	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
+		t = list_entry(e, struct thread, child_elem);
+		if (tid == t->tid) {
+			list_remove(e);      // 자식 리스트에서 제거
+			palloc_free_page(e); // 자식 프로세스 메모리 해제 
+			return; 
+		}
+	}
 }
 
 /* 파일 객체에 대한 fd 생성 */
