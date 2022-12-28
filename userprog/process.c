@@ -232,11 +232,18 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	// while (1) {}
-	struct thread *curr;
+	struct thread *curr, *child;
 	curr = thread_current();
-	sema_down(curr->sema);
-	wait(child_tid);
-	return -1;
+	child = get_child_process(child_tid); 
+	sema_down(curr->sema); // 자식 프로세스가 종료될 때 까지 부모 프로세스 대기 상태 진입
+	
+	/* 자식 프로세스가 비정상적으로 종료 */
+	if (child->exit_status)
+		return -1;
+
+	/* 자식 프로세스가 정상적으로 종료 */
+	remove_child_process(child);
+	return 0;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
