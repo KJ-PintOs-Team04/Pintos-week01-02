@@ -231,7 +231,11 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (1) {}
+	// while (1) {}
+	struct thread *curr;
+	curr = thread_current();
+	sema_down(curr->sema);
+	wait(child_tid);
 	return -1;
 }
 
@@ -283,6 +287,18 @@ process_activate (struct thread *next) {
 
 	/* Set thread's kernel stack for use in processing interrupts. */
 	tss_update (next);
+}
+struct thread *get_child_process() {
+	struct thread *t;
+	struct list_elem *e;
+	tid_t tid;
+	tid = thread_current()->tid;
+	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
+		t = list_entry(e, struct thread, child_elem);
+		if (tid == t->tid)
+			return t;
+	}
+	return NULL;
 }
 
 /* 파일 객체에 대한 fd 생성 */
