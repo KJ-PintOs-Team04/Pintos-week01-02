@@ -27,6 +27,7 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
+static void argument_stack(char **parse, int count, void **esp);
 
 /* General process initializer for initd and other process. */
 static void
@@ -168,9 +169,7 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-    char *token, *save_ptr;
-	int argc = 0;
-	char *argv[10];
+   
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -185,11 +184,6 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
-	/* Parse the command line (Use strtok_r()) */
-	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
-		argv[argc] = token;
-		argc += 1;
-	}
 	/* And then load the binary */
 	success = load (file_name, &_if);
 	/* If load failed, quit. */
@@ -204,12 +198,10 @@ process_exec (void *f_name) {
        we just point the stack pointer (%esp) to our stack frame
        and jump to it. */
 
-	argument_stack(argv, argc, &_if.rsp);
-	_if.R.rdi = argc;
-	_if.R.rsi = _if.rsp + 8;
+
 	palloc_free_page (file_name);
 
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -230,7 +222,10 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (1) {}
+	
+	for (int i = 0; i < 0x0fffffff; i++)
+		continue;
+
 	return -1;
 }
 
@@ -285,12 +280,12 @@ process_activate (struct thread *next) {
 }
 
 
-void argument_stack(char **argv ,int argc ,void **esp) {
-	int *argument_addr[10];
+static void argument_stack(char **argv ,int argc ,void **esp) {
+	int *argument_addr[64];
 	for (int i = argc - 1; i >= 0; i--) {
 		int arg_len = strlen(argv[i]) + 1;
 		*esp -= arg_len;
-		argument_addr[argc] = *esp;
+		argument_addr[i] = *esp;
 		memcpy(*esp, argv[i], arg_len);
 	}
 
@@ -387,12 +382,22 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
+	char *token, *save_ptr;
+	int argc = 0;
+	char *argv[64];
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
 		goto done;
 	process_activate (thread_current ());
+
+
+	/* Parse the command line (Use strtok_r()) */
+	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+		argv[argc] = token;
+		argc += 1;
+	}
 
 	/* Open executable file. */
 	file = filesys_open (file_name);
@@ -475,6 +480,9 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	argument_stack(argv, argc, &if_->rsp);
+	if_->R.rdi = argc;
+	if_->R.rsi = if_->rsp + 8;
 
 	success = true;
 
