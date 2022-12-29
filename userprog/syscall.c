@@ -18,6 +18,7 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 void halt (void);
 void exit (int status);
+bool create(const char *file, unsigned initial_size);
 int write (int fd, const void *buffer, unsigned size);
 void check_address(void *addr);
 /* System call.
@@ -67,10 +68,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// 	break;
 		// case SYS_WAIT:
 		// 	break;
-		// case SYS_CREATE:
-		// 	check_address(f->R.rdi);
-		// 	f->R.rax = create(f->R.rdi, f->R.rsi);
-		// 	break;
+		case SYS_CREATE:
+			check_address(f->R.rdi);
+			f->R.rax = create(f->R.rdi, f->R.rsi);
+			break;
 		// case SYS_REMOVE:
 		// 	check_address(f->R.rdi);
 		// 	f->R.rax = remove(f->R.rdi);
@@ -116,6 +117,10 @@ void exit (int status) {
 	// TODO: close all files, Deallocate the file descriptor table.
 }
 
+bool create(const char *file, unsigned initial_size) {
+	return filesys_create(file, initial_size);
+}
+
 /* 열린 파일(fd)에 버퍼를 write */
 int write(int fd, const void *buffer, unsigned size) {
 	off_t byte;
@@ -133,5 +138,5 @@ void check_address(void *addr) {
 	struct thread *t = thread_current();
 
 	if (addr == NULL || pml4_get_page (t->pml4, addr) == NULL || !is_user_vaddr (addr))
-		exit(-2);
+		exit(-1);
 }
