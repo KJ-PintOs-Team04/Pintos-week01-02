@@ -76,10 +76,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// 	check_address(f->R.rdi);
 		// 	f->R.rax = remove(f->R.rdi);
 		// 	break;
-		// case SYS_OPEN:
-		// 	check_address(f->R.rdi);
-		// 	f->R.rax = open(f->R.rdi);
-		// 	break;
+		case SYS_OPEN:
+			check_address(f->R.rdi);
+			f->R.rax = open(f->R.rdi);
+			break;
 		// case SYS_FILESIZE:
 		// 	f->R.rax = filesize(f->R.rdi);
 		// 	break;
@@ -119,6 +119,19 @@ void exit (int status) {
 
 bool create(const char *file, unsigned initial_size) {
 	return filesys_create(file, initial_size);
+}
+
+/* 파일을 열 때 사용하는 시스템 콜 */
+int open(const char *file) {
+	struct file *fileptr;
+	// root_dir 부터 file(파일 이름)찾아 포인터 반환
+	fileptr = filesys_open(file);
+	
+	// 실패 시 -1 반환
+	if (fileptr == NULL)
+		return -1;
+	// 성공 시 fdt에 fileptr 저장 후 fd 반환
+	return process_add_file(fileptr);
 }
 
 /* 열린 파일(fd)에 버퍼를 write */

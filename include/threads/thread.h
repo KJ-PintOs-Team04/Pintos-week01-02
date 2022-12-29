@@ -112,6 +112,8 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
+	struct file *fdt[64];               /* per process - file descriptor table, array of pointer to struct file */
+	int next_fd;						/* fdt index로 작용 */
 };
 
 /* If false (default), use round-robin scheduler.

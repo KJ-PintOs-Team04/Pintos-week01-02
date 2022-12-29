@@ -279,6 +279,19 @@ process_activate (struct thread *next) {
 	tss_update (next);
 }
 
+/* 파일 객체에 대한 fd 생성 */
+int process_add_file (struct file *f) {
+	struct thread *curr;
+	int fd;
+
+	curr = thread_current();
+	fd = curr->next_fd;
+	curr->fdt[fd] = f;
+	while(curr->fdt[curr->next_fd] != NULL)
+		curr->next_fd++;
+	return fd;
+}
+
 
 static void argument_stack(char **argv ,int argc ,void **esp) {
 	int *argument_addr[64];
