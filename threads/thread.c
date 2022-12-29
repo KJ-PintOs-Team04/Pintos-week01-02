@@ -551,7 +551,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->exit_status = 0;
 	memset(t->fdt, 0, sizeof(t->fdt)); // FDT(file descriptor table) 0으로 초기화
 	t->next_fd = 2;
+	t->parent = NULL;
+	sema_init(t->sema, 0);	
 	list_init(&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
+	list_init (&t->child_list); /* 자식 리스트 초기화 */
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
