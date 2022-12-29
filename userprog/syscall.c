@@ -2,15 +2,24 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
+#include "threads/init.h"
 #include "threads/thread.h"
 #include "threads/loader.h"
 #include "userprog/gdt.h"
+#include "userprog/process.h"
 #include "threads/flags.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "lib/stdio.h"
+#include "lib/kernel/stdio.h"
 #include "intrinsic.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-
+void halt (void);
+void exit (int status);
+int write (int fd, const void *buffer, unsigned size);
+void check_address(void *addr);
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -41,6 +50,88 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	printf ("system call!\n");
-	thread_exit ();
+	// printf ("system call!\n");
+	// thread_exit ();
+	switch (f->R.rax)
+	{
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(f->R.rdi);
+			break;
+		// case SYS_FORK:
+		// 	break;
+		// case SYS_EXEC:
+		//  f->R.rax = exec(f->R.rdi);
+		// 	break;
+		// case SYS_WAIT:
+		// 	break;
+		// case SYS_CREATE:
+		// 	check_address(f->R.rdi);
+		// 	f->R.rax = create(f->R.rdi, f->R.rsi);
+		// 	break;
+		// case SYS_REMOVE:
+		// 	check_address(f->R.rdi);
+		// 	f->R.rax = remove(f->R.rdi);
+		// 	break;
+		// case SYS_OPEN:
+		// 	check_address(f->R.rdi);
+		// 	f->R.rax = open(f->R.rdi);
+		// 	break;
+		// case SYS_FILESIZE:
+		// 	f->R.rax = filesize(f->R.rdi);
+		// 	break;
+		// case SYS_READ:
+		// 	check_address(f->R.rdi);
+		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
+		// 	break;
+		case SYS_WRITE:
+			check_address(f->R.rsi);
+			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		// case SYS_SEEK:
+		// 	// seek(f->R.rdi, f->R.rsi);
+		// 	break;
+		// case SYS_TELL:
+		// 	// f->R.rax = tell(f->R.rdi);
+		// 	break;
+		// case SYS_CLOSE:
+		// 	close(f->R.rdi);
+		// 	break;
+		default:
+			exit (-1);
+	}
+}
+
+void halt(void) {
+	power_off();
+}
+
+void exit (int status) {
+	struct thread *curr = thread_current();
+	curr->exit_status = status; //  정상적으로 종료 시 status는 0
+	printf("%s: exit(%d)\n", curr->name, status);
+	thread_exit();
+	// TODO: close all files, Deallocate the file descriptor table.
+}
+
+/* 열린 파일(fd)에 버퍼를 write */
+int write(int fd, const void *buffer, unsigned size) {
+	off_t byte;
+	struct file *fileptr;
+
+	if (fd == STDOUT_FILENO) {
+		putbuf(buffer, size);
+		return size;
+	}
+	return -1;
+}
+
+/* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인하는 함수 */
+void check_address(void *addr) {
+	struct thread *t = thread_current();
+
+	if (addr == NULL || pml4_get_page (t->pml4, addr) == NULL || !is_user_vaddr (addr))
+		exit(-2);
 }

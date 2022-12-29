@@ -548,7 +548,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
-	list_init (&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
+	t->exit_status = 0;
+	list_init(&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

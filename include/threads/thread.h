@@ -98,9 +98,11 @@ struct thread {
 	struct lock *wait_on_lock;          /* 해당 스레드가 대기하는 lock */
 	struct list donations;              /* 해당 스레드의 priority donation 정보 */
 	struct list_elem d_elem;            /* donation element */
+	int exit_status;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
+	
 #endif
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
