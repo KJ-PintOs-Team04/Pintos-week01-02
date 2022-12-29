@@ -94,7 +94,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			break;
 		case SYS_WRITE:
 			check_address(f->R.rsi);
-			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		// case SYS_SEEK:
 		// 	// seek(f->R.rdi, f->R.rsi);
@@ -195,9 +195,17 @@ int write(int fd, const void *buffer, unsigned size) {
 	off_t byte;
 	struct file *fileptr;
 
+	if (fd == STDIN_FILENO)
+		return -1;
+
 	if (fd == STDOUT_FILENO) {
 		putbuf(buffer, size);
 		return size;
+	}
+	
+	if (fileptr = process_get_file(fd)) {
+		byte = file_write(fileptr, buffer, size);
+		return byte;
 	}
 	return -1;
 }
