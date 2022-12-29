@@ -549,7 +549,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
 	memset(t->fdt, 0, sizeof(void *) * 64); // FDT(file descriptor table) 0으로 초기화
-	// ? stdin, stdout 고려
+	// FIXME: 확인 필요
 	t->next_fd = 2;
 	list_init(&t->donations);	// 각 스레드마다 donation list를 가지고 있음(priority 기억)
 	list_init (&t->child_list); /* 자식 리스트 초기화 */

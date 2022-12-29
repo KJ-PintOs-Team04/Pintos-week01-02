@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
+#include "threads/synch.h"
 #include "intrinsic.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -250,11 +251,18 @@ process_wait (tid_t child_tid UNUSED) {
 void
 process_exit (void) {
 	struct thread *curr = thread_current ();
+	struct thread *parent;
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	// TODO: Modify current process to close the running file. (카이스트 ppt 67페이지 참고)
+	
+	parent = thread_current()->parent;
+
+	remove_all_child_process();
+	sema_up(parent->sema); // 부모 프로세스를 대기 상태에서 이탈
+	// TODO: 프로세스가 종료된 것을 프로세스 디스크립터를 통해 알림
 	process_cleanup ();
 }
 
@@ -298,8 +306,9 @@ process_activate (struct thread *next) {
 
 /* 자식 프로세스 디스크립터를 검색하는 함수 */
 struct thread *get_child_process(tid_t tid) {
-	struct thread *t;
+	struct thread *t, *curr;
 	struct list_elem *e;
+	curr = thread_current();
 
 	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
 		t = list_entry(e, struct thread, child_elem);
@@ -311,8 +320,9 @@ struct thread *get_child_process(tid_t tid) {
 
 /* 자식 프로세스 디스크립터를 삭제하는 함수 */
 void remove_child_process(tid_t tid) {
-	struct thread *t;
+	struct thread *t, *curr;
 	struct list_elem *e;
+	curr = thread_current();
 
 	if (list_empty(&curr->child_list))
 		return;
@@ -324,6 +334,18 @@ void remove_child_process(tid_t tid) {
 			palloc_free_page(e); // 자식 프로세스 메모리 해제 
 			return; 
 		}
+	}
+}
+
+/* 프로세스의 자식 프로세스를 모두 제거 */
+void remove_all_child_process(void) {
+	struct thread *curr;
+	struct list_elem *e;
+	curr = thread_current();
+
+	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
+		list_remove(e);      // 자식 리스트에서 제거
+		palloc_free_page(e); // 자식 프로세스 메모리 해제
 	}
 }
 

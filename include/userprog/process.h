@@ -11,6 +11,7 @@ void process_exit (void);
 void process_activate (struct thread *next);
 struct thread *get_child_process(tid_t tid);
 void remove_child_process(tid_t tid);
+void remove_all_child_process(void);
 int process_add_file(struct file *f);
 struct file *process_get_file(int fd);
 void process_close_file(int fd);

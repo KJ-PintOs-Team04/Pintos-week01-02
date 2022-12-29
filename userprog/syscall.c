@@ -18,6 +18,7 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 void halt (void);
 void exit (int status);
+int wait(tid_t tid);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int open(const char *file);
@@ -27,6 +28,7 @@ int read(int fd, void *buffer, unsigned size);
 int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 void check_address(void *addr);
+
 
 /* System call.
  *
@@ -74,6 +76,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_EXEC:
 			break;
 		case SYS_WAIT:
+			wait(f->R.rdi);
 			break;
 		case SYS_CREATE:
 			check_address(f->R.rdi);
@@ -121,6 +124,14 @@ void exit (int status) {
 	thread_exit();
 	// TODO: close all files, Deallocate the file descriptor table.
 }
+
+/* 자식 프로세스가 종료 될 때까지 대기
+ * tid: 자식 프로세스 pid, int: 자식 프로세스 상태
+ */
+int wait (tid_t tid) { 
+	process_wait(tid);
+}
+
 
 bool create(const char *file, unsigned initial_size) {
 	return filesys_create(file, initial_size);
