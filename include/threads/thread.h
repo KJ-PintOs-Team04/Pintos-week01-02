@@ -97,8 +97,7 @@ struct thread {
 	struct list_elem elem;              /* List element. */
 	struct lock *wait_on_lock;          /* 해당 스레드가 대기하는 lock */
 	struct list donations;              /* 해당 스레드의 priority donation 정보 */
-	struct list_elem d_elem;            /* donation element */
-	int exit_status;
+	struct list_elem d_elem;     		/* donation element */
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -112,6 +111,12 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
+	/* 추가한 부분 */
+	int exit_status;					/* exit status */
+	struct semaphore *sema;             /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
+	struct thread *parent;              /* 부모 프로세스에 대한 필드 */
+	struct list child_list;             /* 자식 프로세스 리스트의 대한 필드 추가 */
+	struct list_elem child_elem;		/* child element */
 	struct file *fdt[64];               /* per process - file descriptor table, array of pointer to struct file */
 	int next_fd;						/* fdt index로 작용 */
 };
