@@ -126,7 +126,7 @@ __do_fork (void *aux) {
 	struct intr_frame if_;
 	struct thread *parent = (struct thread *) aux;
 	struct thread *current = thread_current ();
-	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
+	// TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
 	bool succ = true;
 
@@ -317,6 +317,51 @@ void process_close_file (int fd) {
 	curr->fdt[fd] = NULL;
 	if (curr->next_fd > fd)
 		curr->next_fd = fd;
+}
+
+/* 자식 프로세스 디스크립터를 검색하는 함수 */
+struct thread *get_child_process(tid_t tid) {
+	struct thread *t, *curr;
+	struct list_elem *e;
+	curr = thread_current();
+
+	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
+		t = list_entry(e, struct thread, child_elem);
+		if (tid == t->tid)
+			return t;
+	}
+	return NULL;
+}
+
+/* 자식 프로세스 디스크립터를 삭제하는 함수 */
+void remove_child_process(tid_t tid) {
+	struct thread *t, *curr;
+	struct list_elem *e;
+	curr = thread_current();
+
+	if (list_empty(&curr->child_list))
+		return;
+
+	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
+		t = list_entry(e, struct thread, child_elem);
+		if (tid == t->tid) {
+			list_remove(e);      // 자식 리스트에서 제거
+			palloc_free_page(e); // 자식 프로세스 메모리 해제 
+			return; 
+		}
+	}
+}
+
+/* 프로세스의 자식 프로세스를 모두 제거 */
+void remove_all_child_process(void) {
+	struct thread *curr;
+	struct list_elem *e;
+	curr = thread_current();
+
+	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
+		list_remove(e);      // 자식 리스트에서 제거
+		palloc_free_page(e); // 자식 프로세스 메모리 해제
+	}
 }
 
 static void argument_stack(char **argv ,int argc ,void **esp) {
