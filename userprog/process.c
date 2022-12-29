@@ -292,6 +292,32 @@ int process_add_file (struct file *f) {
 	return fd;
 }
 
+/* 프로세스의 FDT를 검색하여 파일 객체의 주소를 리턴 */
+struct file *process_get_file (int fd) {
+	struct thread *curr;
+	struct file *fileptr;
+
+	curr = thread_current();
+	if (fd >= 0 && fd < 64) {
+		fileptr = curr->fdt[fd];
+		if (fileptr)
+			return fileptr;
+		else
+			return NULL;
+	}
+	return NULL;
+}
+
+/* FDT에서 해당하는 파일 객체를 제거 */
+void process_close_file (int fd) {
+	struct thread *curr;
+
+	curr = thread_current();
+
+	curr->fdt[fd] = NULL;
+	if (curr->next_fd > fd)
+		curr->next_fd = fd;
+}
 
 static void argument_stack(char **argv ,int argc ,void **esp) {
 	int *argument_addr[64];

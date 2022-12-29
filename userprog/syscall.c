@@ -97,9 +97,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// case SYS_TELL:
 		// 	// f->R.rax = tell(f->R.rdi);
 		// 	break;
-		// case SYS_CLOSE:
-		// 	close(f->R.rdi);
-		// 	break;
+		case SYS_CLOSE:
+			close(f->R.rdi);
+			break;
 		default:
 			exit (-1);
 	}
@@ -132,6 +132,17 @@ int open(const char *file) {
 		return -1;
 	// 성공 시 fdt에 fileptr 저장 후 fd 반환
 	return process_add_file(fileptr);
+}
+
+/* 열린 파일을 닫는 시스템 콜 */
+void close (int fd) {
+	struct file *fileptr;
+
+	fileptr = process_get_file(fd);
+	if (fileptr) {
+		file_close(fileptr);
+		process_close_file(fd);
+	}
 }
 
 /* 열린 파일(fd)에 버퍼를 write */
