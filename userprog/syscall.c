@@ -10,6 +10,7 @@
 #include "threads/flags.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "devices/input.h"
 #include "lib/stdio.h"
 #include "lib/kernel/stdio.h"
 #include "intrinsic.h"
@@ -18,7 +19,11 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 void halt (void);
 void exit (int status);
-bool create(const char *file, unsigned initial_size);
+bool create (const char *file, unsigned initial_size);
+int open (const char *file);
+void close (int fd);
+int filesize (int fd);
+int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 void check_address(void *addr);
 /* System call.
@@ -80,13 +85,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			check_address(f->R.rdi);
 			f->R.rax = open(f->R.rdi);
 			break;
-		// case SYS_FILESIZE:
-		// 	f->R.rax = filesize(f->R.rdi);
-		// 	break;
-		// case SYS_READ:
-		// 	check_address(f->R.rdi);
-		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
-		// 	break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		case SYS_READ:
+			check_address(f->R.rsi);
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
 		case SYS_WRITE:
 			check_address(f->R.rsi);
 			write(f->R.rdi, f->R.rsi, f->R.rdx);
@@ -143,6 +148,46 @@ void close (int fd) {
 		file_close(fileptr);
 		process_close_file(fd);
 	}
+}
+
+int filesize(int fd) {
+
+	struct thread *curr;
+	struct file *fileptr;
+	off_t length;
+
+	curr = thread_current();
+	fileptr = curr->fdt[fd];
+
+	// 성공 시 파일의 크기를 반환, 실패 시 -1 반환
+	length = file_length(fileptr);
+	if (length > 0)
+		return length;
+	else
+		return -1;
+}
+
+/* fd로 열린 파일에서 buffer에(메모리) 저장 */
+int read(int fd, void *buffer, unsigned size) {
+	off_t byte;
+	struct file *fileptr;
+
+	if (fd == STDOUT_FILENO)
+		return -1;
+
+	// reads from keyboard
+	if (fd == STDIN_FILENO)
+		return input_getc();
+
+	fileptr = process_get_file(fd);
+
+	if (fileptr) {
+		// Reads SIZE bytes from FILE into BUFFER
+		// 읽은 데이터가 있으면 byte 반환
+		byte = file_read(fileptr, buffer, size);
+		return byte;
+	}
+	return -1;
 }
 
 /* 열린 파일(fd)에 버퍼를 write */
