@@ -105,12 +105,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			check_address(f->R.rsi);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
-		// case SYS_SEEK:
-		// 	seek(f->R.rdi, f->R.rsi);
-		// 	break;
-		// case SYS_TELL:
-		// 	f->R.rax = tell(f->R.rdi);
-		// 	break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
 		case SYS_CLOSE:
 			close(f->R.rdi);
 			break;
@@ -162,13 +162,8 @@ int wait (tid_t tid) {
 	return process_wait(tid);
 }
 
-
 bool create(const char *file, unsigned initial_size) {
 	return filesys_create(file, initial_size);
-}
-
-int wait (tid_t tid) {
-  	return process_wait(tid);
 }
 
 /* 파일이 열려있던지 닫혀있던지 파일을 삭제한다. */
@@ -272,23 +267,23 @@ int write(int fd, const void *buffer, unsigned size) {
 	return -1;
 }
 
-// /* 열린 파일(fd)의 읽거나 쓸 다음 바이트를 position으로 변경 */
-// void seek(int fd, unsigned position) {
-// 	struct file *fileptr;
+/* 열린 파일(fd)의 읽거나 쓸 다음 바이트를 position으로 변경 */
+void seek(int fd, unsigned position) {
+	struct file *fileptr;
 
-// 	fileptr = process_get_file(fd);
-// 	if (fileptr)
-// 		file_seek(fileptr, position);
-// }
+	fileptr = process_get_file(fd);
+	if (fileptr)
+		file_seek(fileptr, position);
+}
 
-// /* 열린 파일 fd에서 읽거나 쓸 다음 바이트의 위치를 반환 */
-// unsigned tell(int fd) {
-// 	struct file *fileptr;
+/* 열린 파일 fd에서 읽거나 쓸 다음 바이트의 위치를 반환 */
+unsigned tell(int fd) {
+	struct file *fileptr;
 
-// 	fileptr = process_get_file(fd);
-// 	if (fileptr)
-// 		return file_tell(fileptr);
-// }
+	fileptr = process_get_file(fd);
+	if (fileptr)
+		return file_tell(fileptr);
+}
 
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인하는 함수 */
 void check_address(void *addr) {
