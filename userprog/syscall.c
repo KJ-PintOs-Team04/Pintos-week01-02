@@ -9,11 +9,13 @@
 #include "userprog/gdt.h"
 #include "userprog/process.h"
 #include "threads/flags.h"
+#include "threads/synch.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "devices/input.h"
 #include "lib/stdio.h"
 #include "lib/kernel/stdio.h"
+#include "lib/string.h"
 #include "intrinsic.h"
 
 void syscall_entry (void);
@@ -21,11 +23,10 @@ void syscall_handler (struct intr_frame *);
 void halt (void);
 void exit (int status);
 tid_t fork(const char *thread_name, struct intr_frame *if_);
+int exec (const char *cmd_line);
+int wait (tid_t tid);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
-int open(const char *file);
-void close (int fd);
-int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
@@ -75,9 +76,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			check_address(f->R.rdi);
 			f->R.rax = fork(f->R.rdi, f);
 			break;
-		// case SYS_EXEC:
-		//  	f->R.rax = exec(f->R.rdi);
-		// 	break;
+		case SYS_EXEC:
+			f->R.rax = exec(f->R.rdi);
+			break;
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
 			break;
@@ -134,21 +135,33 @@ tid_t fork(const char *thread_name, struct intr_frame *if_) {
 	return process_fork(thread_name, if_);
 }
 
-// int exec (const char *file_name) {
-// 	check_address(file_name);
+/* 자식 프로세스를 생성하고, 프로그램을 실행시키는 시스템 콜*/
+//! exec() 호출 시, child process가 프로그램을 메모리에 탑재 완료할 때까지 부모가 대기하도록 실행흐름을 변경하여 작성한다.
+int exec (const char *cmd_line) {
+	
+	int size = strlen(cmd_line) + 1;
+	char *fn_copy = palloc_get_page(PAL_ZERO);
 
-// 	int file_size = strlen(file_name) + 1;
-// 	char *fn_copy = palloc_get_page(PAL_ZERO);
-// 	if (!fn_copy) {
-// 		exit(-1);
-// 		return -1;
-// 	}
-// 	strlcpy(fn_copy, file_name, file_size);
-// 	if (process_exec(fn_copy) == -1) {
-// 		exit(-1);
-// 		return -1;
-// 	}
-// }
+	if (!fn_copy) {
+		exit(-1);
+		return -1;
+	}
+
+	strlcpy(fn_copy, cmd_line, size);
+
+	if (process_exec(fn_copy) == -1) {
+		exit(-1);
+		return -1;
+	}
+}
+
+/* 자식 프로세스가 종료 될 때까지 대기
+ * tid: 자식 프로세스 pid, int: 자식 프로세스 상태
+ */
+int wait (tid_t tid) {
+	return process_wait(tid);
+}
+
 
 bool create(const char *file, unsigned initial_size) {
 	return filesys_create(file, initial_size);
