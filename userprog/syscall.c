@@ -19,8 +19,10 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 void halt (void);
 void exit (int status);
-bool create (const char *file, unsigned initial_size);
-int open (const char *file);
+tid_t fork(const char *thread_name, struct intr_frame *if_);
+bool create(const char *file, unsigned initial_size);
+bool remove(const char *file);
+int open(const char *file);
 void close (int fd);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
@@ -56,8 +58,6 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
-	// printf ("system call!\n");
-	// thread_exit ();
 	switch (f->R.rax)
 	{
 		case SYS_HALT:
@@ -66,21 +66,24 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_EXIT:
 			exit(f->R.rdi);
 			break;
-		// case SYS_FORK:
-		// 	break;
+		case SYS_FORK:
+			check_address(f->R.rdi);
+			f->R.rax = fork(f->R.rdi, f);
+			break;
 		// case SYS_EXEC:
 		//  f->R.rax = exec(f->R.rdi);
 		// 	break;
-		// case SYS_WAIT:
-		// 	break;
+		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
+			break;
 		case SYS_CREATE:
 			check_address(f->R.rdi);
 			f->R.rax = create(f->R.rdi, f->R.rsi);
 			break;
-		// case SYS_REMOVE:
-		// 	check_address(f->R.rdi);
-		// 	f->R.rax = remove(f->R.rdi);
-		// 	break;
+		case SYS_REMOVE:
+			check_address(f->R.rdi);
+			f->R.rax = remove(f->R.rdi);
+			break;
 		case SYS_OPEN:
 			check_address(f->R.rdi);
 			f->R.rax = open(f->R.rdi);
@@ -106,7 +109,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			close(f->R.rdi);
 			break;
 		default:
-			exit (-1);
+			exit (-2);
 	}
 }
 
@@ -119,11 +122,23 @@ void exit (int status) {
 	curr->exit_status = status; //  정상적으로 종료 시 status는 0
 	printf("%s: exit(%d)\n", curr->name, status);
 	thread_exit();
-	// TODO: close all files, Deallocate the file descriptor table.
+}
+
+tid_t fork(const char *thread_name, struct intr_frame *if_) {
+	return process_fork(thread_name, if_);
 }
 
 bool create(const char *file, unsigned initial_size) {
 	return filesys_create(file, initial_size);
+}
+
+int wait (tid_t tid) {
+  	return process_wait(tid);
+}
+
+/* 파일이 열려있던지 닫혀있던지 파일을 삭제한다. */
+bool remove(const char *file) {
+	return filesys_remove(file);
 }
 
 /* 파일을 열 때 사용하는 시스템 콜 */
@@ -151,7 +166,6 @@ void close (int fd) {
 }
 
 int filesize(int fd) {
-
 	struct thread *curr;
 	struct file *fileptr;
 	off_t length;
