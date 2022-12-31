@@ -123,6 +123,7 @@ struct thread {
 	struct list_elem child_elem;		/* child element */
 	struct file *fdt[128];              /* per process - file descriptor table, array of pointer to struct file */
 	int next_fd;						/* fdt index로 작용 */
+	struct file *running_file;           /* running file structure */
 };
 
 /* If false (default), use round-robin scheduler.

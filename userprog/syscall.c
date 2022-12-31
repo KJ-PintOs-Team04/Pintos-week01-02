@@ -5,6 +5,7 @@
 #include "threads/init.h"
 #include "threads/thread.h"
 #include "threads/loader.h"
+#include "threads/palloc.h"
 #include "userprog/gdt.h"
 #include "userprog/process.h"
 #include "threads/flags.h"
@@ -27,6 +28,8 @@ void close (int fd);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
 void check_address(void *addr);
 /* System call.
  *
@@ -43,8 +46,10 @@ void check_address(void *addr);
 
 void
 syscall_init (void) {
-	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
-			((uint64_t)SEL_KCSEG) << 32);
+	lock_init(&filesys_lock);
+
+	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48 |
+							((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
 
 	/* The interrupt service rountine should not serve any interrupts
@@ -71,7 +76,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = fork(f->R.rdi, f);
 			break;
 		// case SYS_EXEC:
-		//  f->R.rax = exec(f->R.rdi);
+		//  	f->R.rax = exec(f->R.rdi);
 		// 	break;
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
@@ -100,16 +105,17 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		// case SYS_SEEK:
-		// 	// seek(f->R.rdi, f->R.rsi);
+		// 	seek(f->R.rdi, f->R.rsi);
 		// 	break;
 		// case SYS_TELL:
-		// 	// f->R.rax = tell(f->R.rdi);
+		// 	f->R.rax = tell(f->R.rdi);
 		// 	break;
 		case SYS_CLOSE:
 			close(f->R.rdi);
 			break;
 		default:
-			exit (-2);
+			exit (-1);
+			break;
 	}
 }
 
@@ -127,6 +133,22 @@ void exit (int status) {
 tid_t fork(const char *thread_name, struct intr_frame *if_) {
 	return process_fork(thread_name, if_);
 }
+
+// int exec (const char *file_name) {
+// 	check_address(file_name);
+
+// 	int file_size = strlen(file_name) + 1;
+// 	char *fn_copy = palloc_get_page(PAL_ZERO);
+// 	if (!fn_copy) {
+// 		exit(-1);
+// 		return -1;
+// 	}
+// 	strlcpy(fn_copy, file_name, file_size);
+// 	if (process_exec(fn_copy) == -1) {
+// 		exit(-1);
+// 		return -1;
+// 	}
+// }
 
 bool create(const char *file, unsigned initial_size) {
 	return filesys_create(file, initial_size);
@@ -160,8 +182,10 @@ void close (int fd) {
 
 	fileptr = process_get_file(fd);
 	if (fileptr) {
+		lock_acquire(&filesys_lock);
 		file_close(fileptr);
 		process_close_file(fd);
+		lock_release(&filesys_lock);
 	}
 }
 
@@ -190,15 +214,22 @@ int read(int fd, void *buffer, unsigned size) {
 		return -1;
 
 	// reads from keyboard
-	if (fd == STDIN_FILENO)
-		return input_getc();
+	if (fd == STDIN_FILENO) {
+		lock_acquire(&filesys_lock);
+		byte = input_getc();
+		lock_release(&filesys_lock);
+		return byte;
+	}
 
 	fileptr = process_get_file(fd);
 
+	// 읽을 file이 있으면 byte 반환
 	if (fileptr) {
+		lock_acquire(&filesys_lock);
 		// Reads SIZE bytes from FILE into BUFFER
-		// 읽은 데이터가 있으면 byte 반환
 		byte = file_read(fileptr, buffer, size);
+		lock_release(&filesys_lock);
+
 		return byte;
 	}
 	return -1;
@@ -213,16 +244,38 @@ int write(int fd, const void *buffer, unsigned size) {
 		return -1;
 
 	if (fd == STDOUT_FILENO) {
+		lock_acquire(&filesys_lock);
 		putbuf(buffer, size);
+		lock_release(&filesys_lock);
 		return size;
 	}
 	
 	if (fileptr = process_get_file(fd)) {
+		lock_acquire(&filesys_lock);
 		byte = file_write(fileptr, buffer, size);
+		lock_release(&filesys_lock);
 		return byte;
 	}
 	return -1;
 }
+
+// /* 열린 파일(fd)의 읽거나 쓸 다음 바이트를 position으로 변경 */
+// void seek(int fd, unsigned position) {
+// 	struct file *fileptr;
+
+// 	fileptr = process_get_file(fd);
+// 	if (fileptr)
+// 		file_seek(fileptr, position);
+// }
+
+// /* 열린 파일 fd에서 읽거나 쓸 다음 바이트의 위치를 반환 */
+// unsigned tell(int fd) {
+// 	struct file *fileptr;
+
+// 	fileptr = process_get_file(fd);
+// 	if (fileptr)
+// 		return file_tell(fileptr);
+// }
 
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인하는 함수 */
 void check_address(void *addr) {

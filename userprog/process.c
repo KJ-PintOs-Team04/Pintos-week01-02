@@ -280,7 +280,9 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	// TODO: denying write
+	/* close the running file(allow write) */
+	if (curr->running_file)
+		file_close(curr->running_file);
 
 	int fd = 2;
 	while (fd < 128)
@@ -655,9 +657,11 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	success = true;
 
+	/* Do not allow the file to be modified when it is opened for execution */
+	t->running_file = file;
+	file_deny_write(file);
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file); //! 지워야 됨
 	return success;
 }
 
