@@ -185,7 +185,7 @@ thread_print_stats (void) {
 tid_t
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
-	struct thread *t;
+	struct thread *t, *parent;
 	tid_t tid;
 
 	ASSERT(function != NULL);
@@ -209,6 +209,22 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
+
+
+	/* 
+		자료구조 초기화
+	   1. 부모 프로세스 디스크립터 포인터 저장
+	   2. load, exit 저장
+	   3. 세마포어 초기화(sema_init)
+	   4. 부모 프로세스의 자식 리스트에 생성된 스레드 추가
+	*/
+	parent = thread_current();
+	t->parent = parent;
+	t->exit_status = 0;
+	sema_init(&t->sema_wait, 0);
+	sema_init(&t->sema_exit, 0);
+	sema_init(&t->sema_fork, 0);
+	list_push_back(&parent->child_list, &t->child_elem);
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -549,10 +565,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
 	t->exit_status = 0;
-	memset(t->fdt, 0, sizeof(t->fdt)); // FDT(file descriptor table) 0으로 초기화
-	t->next_fd = 2;
-	t->parent = NULL;
-	sema_init(t->sema, 0);	
+	// memset(t->fdt, 0, sizeof(t->fdt)); // FDT(file descriptor table) 0으로 초기화
+	t->next_fd = 2;	
 	list_init(&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
 	list_init (&t->child_list); /* 자식 리스트 초기화 */
 }
