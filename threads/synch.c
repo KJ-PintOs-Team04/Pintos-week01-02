@@ -67,7 +67,7 @@ sema_down (struct semaphore *sema) {
 	old_level = intr_disable ();
 	while (sema->value == 0) {
 		// waiters에 추가
-		list_push_back(&sema->waiters, &thread_current()->elem);
+		list_insert_ordered(&sema->waiters, &thread_current()->elem, cmp_priority, NULL);
 		thread_block();
 	}
 	sema->value--;
@@ -111,12 +111,13 @@ sema_up (struct semaphore *sema) {
 	ASSERT (sema != NULL);
 
 	old_level = intr_disable ();
-	list_sort(&sema->waiters, cmp_priority, NULL);
 	if (!list_empty(&sema->waiters))
 	{
+		list_sort(&sema->waiters, cmp_priority, NULL);
 		t = list_entry(list_pop_front(&sema->waiters), struct thread, elem);
 		thread_unblock (t);
 		sema->value++;
+		// waiter에서 꺼내온 thread가 현재 실행중인 thread 보다 우선순위가 높을 수 있으므로 현재 thread와 비교
 		if (t ->priority > thread_get_priority())
 			thread_yield();
 	}
@@ -330,8 +331,8 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	
 	if (!list_empty(&cond->waiters)) {
 		list_sort(&cond->waiters, cmp_sema_priority, NULL);
-		sema_up (&(list_entry (list_pop_front (&cond->waiters),
-					struct semaphore_elem , elem)->semaphore));
+		sema_up (&list_entry (list_pop_front (&cond->waiters),
+					struct semaphore_elem , elem)->semaphore);
 	}
 		
 }
@@ -352,10 +353,17 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 }
 
 bool cmp_sema_priority (const struct list_elem *a, const struct list_elem *b, void *aux) {
-	int first_priority, second_priority;
+	struct semaphore_elem *a_sema, *b_sema;
 
-	first_priority = list_entry (a, struct thread, d_elem) -> priority;
-	second_priority = list_entry (b, struct thread, d_elem) -> priority;
+	// list_entry 로 semaphore_elem 구조체를 구하여 저장
+	a_sema = list_entry(a, struct semaphore_elem, elem);
+	b_sema = list_entry(b, struct semaphore_elem, elem);
 
-	return (first_priority > second_priority);
+	// 구조체가 가지는 semaphore 의 waiters 리스트를 받아옴
+	struct list *waiter_a_sema = &(a_sema->semaphore.waiters);
+	struct list *watier_b_sema = &(b_sema->semaphore.waiters);
+
+	// waiters 리스트의 맨 앞 element 스레드의 priority 끼리 비교하여 반환
+	return list_entry(list_begin(waiter_a_sema), struct thread, elem)->priority >
+		   list_entry(list_begin(watier_b_sema), struct thread, elem)->priority;
 }
