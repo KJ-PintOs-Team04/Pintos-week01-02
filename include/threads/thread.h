@@ -120,7 +120,7 @@ struct thread {
 	struct intr_frame user_if;       /* userland context of the process */
 	struct list child_list;             /* 자식 프로세스 리스트의 대한 필드 추가 */
 	struct list_elem child_elem;		/* child element */
-	struct file *fdt[128];              /* per process - file descriptor table, array of pointer to struct file */
+	struct file **fdt;              /* per process - file descriptor table, array of pointer to struct file */
 	int next_fd;						/* fdt index로 작용 */
 	struct file *running_file;           /* running file structure */
 	unsigned magic;                     /* Detects stack overflow. */

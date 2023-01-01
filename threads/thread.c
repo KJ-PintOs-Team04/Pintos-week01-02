@@ -221,6 +221,7 @@ thread_create (const char *name, int priority,
 	parent = thread_current();
 	t->parent = parent;
 	t->exit_status = 0;
+	t->fdt = palloc_get_page(PAL_ZERO);
 	sema_init(&t->sema_wait, 0);
 	sema_init(&t->sema_exit, 0);
 	sema_init(&t->sema_fork, 0);
@@ -565,7 +566,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
 	t->exit_status = 0;
-	// memset(t->fdt, 0, sizeof(t->fdt)); // FDT(file descriptor table) 0으로 초기화
 	t->next_fd = 2;	
 	list_init(&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
 	list_init (&t->child_list); /* 자식 리스트 초기화 */

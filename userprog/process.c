@@ -285,8 +285,8 @@ process_exit (void) {
 		fd++;
 	}
 	sema_up(&curr->sema_wait);   // 부모 프로세스를 대기 상태에서 이탈
-	sema_down(&curr->sema_exit); // 자식 리스트 제거까지 대기 
-	
+	sema_down(&curr->sema_exit); // 자식 리스트 제거까지 대기
+	palloc_free_page(curr->fdt);
 	process_cleanup();
 }
 
