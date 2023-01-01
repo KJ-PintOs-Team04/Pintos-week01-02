@@ -174,14 +174,20 @@ bool remove(const char *file) {
 /* 파일을 열 때 사용하는 시스템 콜 */
 int open(const char *file) {
 	struct file *fileptr;
+	int fd;
 	// root_dir 부터 file(파일 이름)찾아 포인터 반환
 	fileptr = filesys_open(file);
 	
 	// 실패 시 -1 반환
 	if (fileptr == NULL)
 		return -1;
+
 	// 성공 시 fdt에 fileptr 저장 후 fd 반환
-	return process_add_file(fileptr);
+	fd = process_add_file(fileptr);
+	if (fd == -1)
+		file_close(fileptr);
+
+	return fd;
 }
 
 /* 열린 파일을 닫는 시스템 콜 */

@@ -43,7 +43,7 @@ process_init (void) {
  * Notice that THIS SHOULD BE CALLED ONCE. */
 tid_t
 process_create_initd (const char *file_name) {
-	char *fn_copy, *p_name, *save_ptr;
+	char *fn_copy, *save_ptr;
 	tid_t tid;
 
 	/* Make a copy of FILE_NAME.
@@ -53,11 +53,10 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
-	p_name = strtok_r(file_name, " ", &save_ptr);
+	strtok_r(file_name, " ", &save_ptr);
 
 	/* Create a new thread to execute FILE_NAME. */
-	// tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
-	tid = thread_create(p_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
 	return tid;
@@ -71,8 +70,7 @@ initd (void *f_name) {
 #endif
 
 	process_init ();
-
-	if (process_exec (f_name) < 0)
+	if (process_exec(f_name) < 0)
 		PANIC("Fail to launch initd\n");
 	NOT_REACHED ();
 }
@@ -84,18 +82,18 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
 
 	tid_t child_tid;
-	struct thread *child;
-	memcpy(&(thread_current()->user_if), if_, sizeof(struct intr_frame));
-
+	struct thread *child, *curr;
+	curr = thread_current();
+	memcpy(&(curr->user_if), if_, sizeof(struct intr_frame));
 	child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
 	if (child_tid == TID_ERROR)
 		return TID_ERROR;
 	
 	child = get_child_process(child_tid);
-	sema_down(&child->sema_fork);
+	sema_down(&curr->sema_fork);
 
-	if (child->exit_status == -1)
-		return TID_ERROR;
+	// if (child->exit_status == -1)
+	// 	return TID_ERROR;
 	
 	return child_tid;
 }
@@ -183,7 +181,7 @@ __do_fork (void *aux) {
 			current->fdt[i] = file_duplicate(file);
 	}
 	current->next_fd = parent->next_fd; // 자식 next_fd에 부모의 next_fd 저장
-	sema_up(&current->sema_fork);       // 부모의 fork 대기 상태 해제
+	sema_up(&parent->sema_fork);       // 부모의 fork 대기 상태 해제
 
 	process_init();
 
@@ -219,20 +217,12 @@ process_exec (void *f_name) {
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
-	/* If load failed, quit. */
-	if (!success)
-		return -1;
-
-	/* Set up stack */
-	/* Start the user process by simulating a return from an
-       interrupt, implemented by intr_exit (inthreads/intr-stubs.S).
-	   Because intr_exit takes all of its arguments on the stack 
-	   in the form of a `struct intr_frame',
-       we just point the stack pointer (%esp) to our stack frame
-       and jump to it. */
-
 
 	palloc_free_page (file_name);
+
+		/* If load failed, quit. */
+	if (!success)
+		return -1;
 
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 	/* Start switched process. */
@@ -290,7 +280,7 @@ process_exit (void) {
 	{
 		if (curr->fdt[fd]) { 
 			file_close(curr->fdt[fd]);
-			curr->fdt[fd] = NULL;
+			process_close_file(fd);
 		}
 		fd++;
 	}
@@ -345,9 +335,12 @@ int process_add_file (struct file *f) {
 
 	curr = thread_current();
 	fd = curr->next_fd;
+	// fdt가 꽉 차 있을 경우
+	if (fd == 128)
+		return -1;
+
 	curr->fdt[fd] = f;
-	// TODO: 만일 fdt가 다 차있다면?
-	while(curr->fdt[curr->next_fd] != NULL)
+	while(curr->next_fd < 128 && curr->fdt[curr->next_fd] != NULL)
 		curr->next_fd++;
 	return fd;
 }
@@ -358,7 +351,7 @@ struct file *process_get_file (int fd) {
 	struct file *fileptr;
 
 	curr = thread_current();
-	if (fd >= 0 && fd < 128) {
+	if (fd >= 2 && fd < 128) {
 		fileptr = curr->fdt[fd];
 		if (fileptr)
 			return fileptr;

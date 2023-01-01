@@ -111,7 +111,6 @@ struct thread {
 
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
-	unsigned magic;                     /* Detects stack overflow. */
 	/* 추가한 부분 */
 	int exit_status;					/* exit status */
 	struct semaphore sema_wait;              /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
@@ -124,6 +123,7 @@ struct thread {
 	struct file *fdt[128];              /* per process - file descriptor table, array of pointer to struct file */
 	int next_fd;						/* fdt index로 작용 */
 	struct file *running_file;           /* running file structure */
+	unsigned magic;                     /* Detects stack overflow. */
 };
 
 /* If false (default), use round-robin scheduler.
