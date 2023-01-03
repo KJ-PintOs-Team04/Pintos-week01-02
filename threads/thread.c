@@ -211,17 +211,11 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 
-	/* 
-		자료구조 초기화
-	   1. 부모 프로세스 디스크립터 포인터 저장
-	   2. load, exit 저장
-	   3. 세마포어 초기화(sema_init)
-	   4. 부모 프로세스의 자식 리스트에 생성된 스레드 추가
-	*/
+	/* 자료구조 초기화 - USERPROG */
 	parent = thread_current();
 	t->parent = parent;
-	t->exit_status = 0;
-	t->fdt = palloc_get_page(PAL_ZERO);
+	t->fdt = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+	t->next_fd = 2;
 	sema_init(&t->sema_wait, 0);
 	sema_init(&t->sema_exit, 0);
 	sema_init(&t->sema_fork, 0);
@@ -565,8 +559,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	t->magic = THREAD_MAGIC;
-	t->exit_status = 0;
-	t->next_fd = 2;	
 	list_init(&t->donations); // 각 스레드마다 donation list를 가지고 있음(priority 기억)
 	list_init (&t->child_list); /* 자식 리스트 초기화 */
 }
