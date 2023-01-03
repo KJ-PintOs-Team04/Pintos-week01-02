@@ -10,6 +10,8 @@
 #include "vm/vm.h"
 #endif
 
+#define FDT_PAGES 3
+#define FDT_MAXSIZE (1<<9)*FDT_PAGES
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -113,16 +115,16 @@ struct thread {
 	struct intr_frame tf;               /* Information for switching */
 	/* 추가한 부분 */
 	int exit_status;					/* exit status */
-	struct semaphore sema_wait;              /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
-	struct semaphore sema_exit;              /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
-	struct semaphore sema_fork;              /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
+	struct semaphore sema_wait;         /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
+	struct semaphore sema_exit;         /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
+	struct semaphore sema_fork;         /* 프로세스의 대기를 위한 세마포어에 대한 필드 */
 	struct thread *parent;              /* 부모 프로세스에 대한 필드 */
-	struct intr_frame user_if;       /* userland context of the process */
+	struct intr_frame user_if;          /* userland context of the process */
 	struct list child_list;             /* 자식 프로세스 리스트의 대한 필드 추가 */
 	struct list_elem child_elem;		/* child element */
-	struct file **fdt;              /* per process - file descriptor table, array of pointer to struct file */
+	struct file **fdt;                  /* file descriptor table, array of pointer to struct file */
 	int next_fd;						/* fdt index로 작용 */
-	struct file *running_file;           /* running file structure */
+	struct file *running_file;          /* running file struct */
 	unsigned magic;                     /* Detects stack overflow. */
 };
 
