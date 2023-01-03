@@ -27,7 +27,8 @@ int exec (const char *cmd_line);
 int wait (tid_t tid);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
-int read (int fd, void *buffer, unsigned size);
+int open(const char *file);
+int read(int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
@@ -127,7 +128,7 @@ void halt(void) {
 
 void exit (int status) {
 	struct thread *curr = thread_current();
-	curr->exit_status = status; //  정상적으로 종료 시 status는 0
+	curr->exit_status = status; 
 	printf("%s: exit(%d)\n", curr->name, status);
 	thread_exit();
 }
@@ -136,8 +137,7 @@ tid_t fork(const char *thread_name, struct intr_frame *if_) {
 	return process_fork(thread_name, if_);
 }
 
-/* 자식 프로세스를 생성하고, 프로그램을 실행시키는 시스템 콜*/
-//! exec() 호출 시, child process가 프로그램을 메모리에 탑재 완료할 때까지 부모가 대기하도록 실행흐름을 변경하여 작성한다.
+/* 프로그램을 실행시키는 시스템 콜*/
 int exec (const char *cmd_line) {
 	
 	int size = strlen(cmd_line) + 1;
@@ -193,37 +193,30 @@ int open(const char *file) {
 
 /* 열린 파일을 닫는 시스템 콜 */
 void close (int fd) {
-	struct file *fileptr;
-
-	fileptr = process_get_file(fd);
+	struct file *fileptr = thread_current()->fdt[fd];
+	
 	if (fileptr) {
 		lock_acquire(&filesys_lock);
 		file_close(fileptr);
-		process_close_file(fd);
 		lock_release(&filesys_lock);
+		process_close_file(fd);
 	}
 }
 
 int filesize(int fd) {
-	struct thread *curr;
-	struct file *fileptr;
 	off_t length;
-
-	curr = thread_current();
-	fileptr = curr->fdt[fd];
+	struct file *fileptr = thread_current()->fdt[fd];
 
 	// 성공 시 파일의 크기를 반환, 실패 시 -1 반환
-	length = file_length(fileptr);
-	if (length > 0)
-		return length;
-	else
-		return -1;
+	if (fileptr) {
+		return file_length(fileptr);
+	}
+	return -1;
 }
 
 /* fd로 열린 파일에서 buffer에(메모리) 저장 */
 int read(int fd, void *buffer, unsigned size) {
 	off_t byte;
-	struct file *fileptr;
 
 	if (fd == STDOUT_FILENO)
 		return -1;
@@ -236,8 +229,7 @@ int read(int fd, void *buffer, unsigned size) {
 		return byte;
 	}
 
-	fileptr = process_get_file(fd);
-
+	struct file *fileptr = thread_current()->fdt[fd];
 	// 읽을 file이 있으면 byte 반환
 	if (fileptr) {
 		lock_acquire(&filesys_lock);
@@ -253,7 +245,6 @@ int read(int fd, void *buffer, unsigned size) {
 /* 열린 파일(fd)에 버퍼를 write */
 int write(int fd, const void *buffer, unsigned size) {
 	off_t byte;
-	struct file *fileptr;
 
 	if (fd == STDIN_FILENO)
 		return -1;
@@ -264,8 +255,9 @@ int write(int fd, const void *buffer, unsigned size) {
 		lock_release(&filesys_lock);
 		return size;
 	}
-	
-	if (fileptr = process_get_file(fd)) {
+
+	struct file *fileptr = thread_current()->fdt[fd];
+	if (fileptr) {
 		lock_acquire(&filesys_lock);
 		byte = file_write(fileptr, buffer, size);
 		lock_release(&filesys_lock);
@@ -276,18 +268,14 @@ int write(int fd, const void *buffer, unsigned size) {
 
 /* 열린 파일(fd)의 읽거나 쓸 다음 바이트를 position으로 변경 */
 void seek(int fd, unsigned position) {
-	struct file *fileptr;
-
-	fileptr = process_get_file(fd);
+	struct file *fileptr = thread_current()->fdt[fd];
 	if (fileptr)
 		file_seek(fileptr, position);
 }
 
 /* 열린 파일 fd에서 읽거나 쓸 다음 바이트의 위치를 반환 */
 unsigned tell(int fd) {
-	struct file *fileptr;
-
-	fileptr = process_get_file(fd);
+	struct file *fileptr = thread_current()->fdt[fd];
 	if (fileptr)
 		return file_tell(fileptr);
 }
@@ -295,7 +283,6 @@ unsigned tell(int fd) {
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인하는 함수 */
 void check_address(void *addr) {
 	struct thread *t = thread_current();
-
-	if (addr == NULL || pml4_get_page (t->pml4, addr) == NULL || !is_user_vaddr (addr))
+	if (addr == NULL || is_kernel_vaddr(addr) || pml4_get_page (t->pml4, addr) == NULL)
 		exit(-1);
 }

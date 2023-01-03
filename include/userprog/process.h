@@ -12,8 +12,5 @@ void process_activate (struct thread *next);
 int process_add_file(struct file *f);
 struct file *process_get_file (int fd);
 void process_close_file(int fd);
-struct file *get_parent_file(int fd, struct file **fdt);
 struct thread *get_child_process(tid_t tid);
-void remove_child_process(tid_t tid);
-void remove_all_child_process(void);
 #endif /* userprog/process.h */

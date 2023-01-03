@@ -28,7 +28,7 @@ static void process_cleanup (void);
 static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
-static void argument_stack(char **parse, int count, void **esp);
+static void argument_stack(char **argv, int argc, struct intr_frame *if_);
 
 /* General process initializer for initd and other process. */
 static void
@@ -80,20 +80,21 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
-
 	tid_t child_tid;
 	struct thread *child, *curr;
+
 	curr = thread_current();
 	memcpy(&(curr->user_if), if_, sizeof(struct intr_frame));
-	child_tid = thread_create (name, PRI_DEFAULT, __do_fork, thread_current ());
+
+	child_tid = thread_create (name, PRI_DEFAULT, __do_fork, curr);
 	if (child_tid == TID_ERROR)
 		return TID_ERROR;
 	
 	child = get_child_process(child_tid);
-	sema_down(&curr->sema_fork);
+	sema_down(&child->sema_fork);
 
-	// if (child->exit_status == -1)
-	// 	return TID_ERROR;
+	if (child->exit_status == -1)
+		return TID_ERROR;
 	
 	return child_tid;
 }
@@ -174,14 +175,23 @@ __do_fork (void *aux) {
 	// TODO:       from the fork() until this function successfully duplicates
 	// TODO:       the resources of parent.*/
 
+	if (parent->next_fd == FDT_MAXSIZE) {
+		goto error;
+	}
+	int cnt = 2;
+	struct file **fdt = parent->fdt;
+
 	/* 부모의 FDT를 자식의 FDT로 복제 */
-	for (int i = 2; i < 128; i++) {
-		struct flie *file = get_parent_file(i, parent->fdt);
-		if (file) 
-			current->fdt[i] = file_duplicate(file);
+	while (cnt < FDT_MAXSIZE) {
+		if (fdt[cnt]) {
+			current->fdt[cnt] = file_duplicate(fdt[cnt]);
+		} else {
+			current->fdt[cnt] = NULL;
+		}
+		cnt++;
 	}
 	current->next_fd = parent->next_fd; // 자식 next_fd에 부모의 next_fd 저장
-	sema_up(&parent->sema_fork);       // 부모의 fork 대기 상태 해제
+	sema_up(&current->sema_fork);       // 부모의 fork 대기 상태 해제
 
 	process_init();
 
@@ -189,9 +199,8 @@ __do_fork (void *aux) {
 	if (succ)
 		do_iret (&if_);
 error:
-	// current->exit_status = -1;
 	sema_up(&current->sema_fork);
-	exit(-1);
+	exit(TID_ERROR);
 }
 
 /* Switch the current execution context to the f_name.
@@ -220,7 +229,7 @@ process_exec (void *f_name) {
 
 	palloc_free_page (file_name);
 
-		/* If load failed, quit. */
+	/* If load failed, quit. */
 	if (!success)
 		return -1;
 
@@ -245,20 +254,18 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-
-
 	struct thread *child;
 
 	child = get_child_process(child_tid);
 	if (child == NULL)
 		return -1;
-
+ 
 	sema_down(&child->sema_wait);
-
+	int exit_status = child->exit_status;
 	list_remove(&child->child_elem);
 	sema_up(&child->sema_exit);
 
-	return child->exit_status;
+	return exit_status;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -275,8 +282,9 @@ process_exit (void) {
 	if (curr->running_file)
 		file_close(curr->running_file);
 
+	/* close all files in fdt */
 	int fd = 2;
-	while (fd < 128)
+	while (fd < FDT_MAXSIZE)
 	{
 		if (curr->fdt[fd]) { 
 			file_close(curr->fdt[fd]);
@@ -284,10 +292,13 @@ process_exit (void) {
 		}
 		fd++;
 	}
+	palloc_free_multiple(curr->fdt, FDT_PAGES); // fdt 메모리 해제
+
 	sema_up(&curr->sema_wait);   // 부모 프로세스를 대기 상태에서 이탈
 	sema_down(&curr->sema_exit); // 자식 리스트 제거까지 대기
-	palloc_free_page(curr->fdt);
+
 	process_cleanup();
+
 }
 
 /* Free the current process's resources. */
@@ -336,11 +347,11 @@ int process_add_file (struct file *f) {
 	curr = thread_current();
 	fd = curr->next_fd;
 	// fdt가 꽉 차 있을 경우
-	if (fd == 128)
+	if (fd == FDT_MAXSIZE)
 		return -1;
 
 	curr->fdt[fd] = f;
-	while(curr->next_fd < 128 && curr->fdt[curr->next_fd] != NULL)
+	while(curr->next_fd < FDT_MAXSIZE && curr->fdt[curr->next_fd] != NULL)
 		curr->next_fd++;
 	return fd;
 }
@@ -351,7 +362,7 @@ struct file *process_get_file (int fd) {
 	struct file *fileptr;
 
 	curr = thread_current();
-	if (fd >= 2 && fd < 128) {
+	if (fd >= 2 && fd < FDT_MAXSIZE) {
 		fileptr = curr->fdt[fd];
 		if (fileptr)
 			return fileptr;
@@ -372,20 +383,6 @@ void process_close_file (int fd) {
 		curr->next_fd = fd;
 }
 
-/* 부모 프로세스의 FDT를 검색하여 파일 객체의 주소를 리턴 */
-struct file *get_parent_file (int fd, struct file **fdt) {
-	struct file *fileptr;
-
-	if (fd >= 0 && fd < 128) {
-		fileptr = fdt[fd];
-		if (fileptr)
-			return fileptr;
-		else
-			return NULL;
-	}
-	return NULL;
-}
-
 
 /* 자식 프로세스 디스크립터를 검색하는 함수 */
 struct thread *get_child_process(tid_t tid) {
@@ -402,65 +399,39 @@ struct thread *get_child_process(tid_t tid) {
 	return NULL;
 }
 
-/* 자식 프로세스 디스크립터를 삭제하는 함수 */
-void remove_child_process(tid_t tid) {
-	struct thread *t, *curr;
-	struct list_elem *e;
-	curr = thread_current();
-
-	if (list_empty(&curr->child_list))
-		return;
-
-	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
-		t = list_entry(e, struct thread, child_elem);
-		if (tid == t->tid) {
-			list_remove(e);      // 자식 리스트에서 제거
-			palloc_free_page(e); // 자식 프로세스 메모리 해제 
-			return; 
-		}
-	}
-}
-
-/* 프로세스의 자식 프로세스를 모두 제거 */
-void remove_all_child_process(void) {
-	struct thread *curr;
-	struct list_elem *e;
-	curr = thread_current();
-
-	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
-		list_remove(e);      // 자식 리스트에서 제거
-		palloc_free_page(e); // 자식 프로세스 메모리 해제
-	}
-}
-
-static void argument_stack(char **argv ,int argc ,void **esp) {
+/* user stack에 argument 저장 */
+static void argument_stack(char **argv ,int argc ,struct intr_frame *if_) {
 	int *argument_addr[64];
+
 	for (int i = argc - 1; i >= 0; i--) {
 		int arg_len = strlen(argv[i]) + 1;
-		*esp -= arg_len;
-		argument_addr[i] = *esp;
-		memcpy(*esp, argv[i], arg_len);
+		if_->rsp -= arg_len;
+		argument_addr[i] = if_->rsp;
+		memcpy(if_->rsp, argv[i], arg_len);
 	}
 
-	while ((int)*esp % 8 != 0) 
-		*esp -= 1;
-	memset(*esp, 0, sizeof(uint8_t));
+	while ((int)if_->rsp % 8 != 0) {
+		if_->rsp -= 1;
+		memset(if_->rsp, 0, sizeof(uint8_t));
+	}
 
 
 	for (int i = argc; i >= 0; i--) {
 		if (i == argc) {
-			*esp -= 8;
-			memset(*esp, 0, sizeof(char *));
+			if_->rsp -= 8;
+			memset(if_->rsp, 0, sizeof(char *));
 		}
 		else {
-			*esp -= 8;
-			memcpy(*esp, &argument_addr[i], sizeof(char *));
+			if_->rsp -= 8;
+			memcpy(if_->rsp, &argument_addr[i], sizeof(char *));
 		}
 	}
-	*esp -= 8;
-	memset(*esp, 0, sizeof(void *));
-}
+	if_->R.rdi = argc;
+	if_->R.rsi = if_->rsp;
 
+	if_->rsp -= 8;
+	memset(if_->rsp, 0, sizeof(void *));
+}
 
 
 
@@ -553,11 +524,12 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Open executable file. */
-	file = filesys_open (file_name);
+	t->running_file = file = filesys_open (file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
 	}
+	file_deny_write(file);
 
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -633,15 +605,12 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-	argument_stack(argv, argc, &if_->rsp);
-	if_->R.rdi = argc;
-	if_->R.rsi = if_->rsp + 8;
+	argument_stack(argv, argc, if_);
+	
 
 	success = true;
 
 	/* Do not allow the file to be modified when it is opened for execution */
-	t->running_file = file;
-	file_deny_write(file);
 done:
 	/* We arrive here whether the load is successful or not. */
 	return success;
