@@ -118,8 +118,12 @@ sema_up (struct semaphore *sema) {
 		thread_unblock (t);
 		sema->value++;
 		// waiter에서 꺼내온 thread가 현재 실행중인 thread 보다 우선순위가 높을 수 있으므로 현재 thread와 비교
-		if (t ->priority > thread_get_priority())
-			thread_yield();
+		if (t ->priority > thread_get_priority()) {
+			if (intr_context ()) 
+				intr_yield_on_return();
+			else 
+				thread_yield();
+		}
 	}
 	else 
 		sema->value++;
