@@ -128,7 +128,10 @@ void halt(void) {
 
 void exit (int status) {
 	struct thread *curr = thread_current();
-	curr->exit_status = status; 
+	curr->exit_status =  status;
+	if (curr->child) {
+		curr->child->exit_status = status;
+	} 
 	printf("%s: exit(%d)\n", curr->name, status);
 	thread_exit();
 }
@@ -177,7 +180,9 @@ int open(const char *file) {
 	struct file *fileptr;
 	int fd;
 	// root_dir 부터 file(파일 이름)찾아 포인터 반환
-	fileptr = filesys_open(file);
+	lock_acquire(&filesys_lock);
+	fileptr = filesys_open(file);	
+	lock_release(&filesys_lock);
 	
 	// 실패 시 -1 반환
 	if (fileptr == NULL)

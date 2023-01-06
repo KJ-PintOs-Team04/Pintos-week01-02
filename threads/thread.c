@@ -10,6 +10,7 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #include "intrinsic.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -210,16 +211,17 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-
 	/* 자료구조 초기화 - USERPROG */
 	parent = thread_current();
 	t->parent = parent;
 	t->fdt = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 	t->next_fd = 2;
-	sema_init(&t->sema_wait, 0);
-	sema_init(&t->sema_exit, 0);
-	sema_init(&t->sema_fork, 0);
-	list_push_back(&parent->child_list, &t->child_elem);
+	t->child = calloc(1, sizeof(struct child));
+	t->child->tid = tid;
+	t->child->is_waiting = false;
+	sema_init(&t->child->sema_wait, 0);
+	sema_init(&t->child->sema_fork, 0);
+	list_push_back(&parent->child_list, &t->child->child_elem);
 
 	/* Add to run queue. */
 	thread_unblock (t);

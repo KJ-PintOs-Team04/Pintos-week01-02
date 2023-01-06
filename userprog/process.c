@@ -8,6 +8,7 @@
 #include <string.h>
 #include "userprog/gdt.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -29,6 +30,7 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 static void argument_stack(char **argv, int argc, struct intr_frame *if_);
+static void free_child(void);
 
 /* General process initializer for initd and other process. */
 static void
@@ -81,7 +83,8 @@ tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
 	tid_t child_tid;
-	struct thread *child, *curr;
+	struct thread *curr;
+	struct child *child;
 
 	curr = thread_current();
 	memcpy(&(curr->user_if), if_, sizeof(struct intr_frame));
@@ -91,7 +94,9 @@ process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 		return TID_ERROR;
 	
 	child = get_child_process(child_tid);
-	sema_down(&child->sema_fork);
+
+	/* Parent process should never return from the fork until it knows whether the child process successfully cloned */
+	sema_down(&child->sema_fork); 
 
 	if (child->exit_status == -1)
 		return TID_ERROR;
@@ -191,7 +196,7 @@ __do_fork (void *aux) {
 		cnt++;
 	}
 	current->next_fd = parent->next_fd; // 자식 next_fd에 부모의 next_fd 저장
-	sema_up(&current->sema_fork);       // 부모의 fork 대기 상태 해제
+	sema_up(&current->child->sema_fork);       // 부모의 fork 대기 상태 해제
 
 	process_init();
 
@@ -199,7 +204,7 @@ __do_fork (void *aux) {
 	if (succ)
 		do_iret (&if_);
 error:
-	sema_up(&current->sema_fork);
+	sema_up(&current->child->sema_fork);
 	exit(TID_ERROR);
 }
 
@@ -254,29 +259,33 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	struct thread *child;
+	struct child *child;
 
 	child = get_child_process(child_tid);
+
+	/* pid does not refer to a direct child of the calling process */
 	if (child == NULL)
 		return -1;
- 
-	sema_down(&child->sema_wait);
+
+	if (!child->is_waiting) {
+		child->is_waiting = true;
+		sema_down(&child->sema_wait);
+	}
+	else /* The process that calls wait has already called wait on pid */
+		return -1;
+	
 	int exit_status = child->exit_status;
 	list_remove(&child->child_elem);
-	sema_up(&child->sema_exit);
+	free(child);
 
 	return exit_status;
 }
+
 
 /* Exit the process. This function is called by thread_exit (). */
 void
 process_exit (void) {
 	struct thread *curr = thread_current ();
-	
-	/* TODO: Your code goes here.
-	 * TODO: Implement process termination message (see
-	 * TODO: project2/process_termination.html).
-	 * TODO: We recommend you to implement process resource cleanup here. */
 
 	/* close the running file(allow write) */
 	if (curr->running_file)
@@ -286,19 +295,24 @@ process_exit (void) {
 	int fd = 2;
 	while (fd < FDT_MAXSIZE)
 	{
-		if (curr->fdt[fd]) { 
+		if (curr->fdt[fd]) {
+			// lock_acquire(&filesys_lock);
 			file_close(curr->fdt[fd]);
+			// lock_release(&filesys_lock);
 			process_close_file(fd);
 		}
 		fd++;
 	}
 	palloc_free_multiple(curr->fdt, FDT_PAGES); // fdt 메모리 해제
 
-	sema_up(&curr->sema_wait);   // 부모 프로세스를 대기 상태에서 이탈
-	sema_down(&curr->sema_exit); // 자식 리스트 제거까지 대기
+	free_child(); // 자식 리스트에 있는 struct child 메모리 해제
+
+	/* 부모 프로세스가 먼저 종료되지 않았다면 */
+	if (curr->child != NULL)
+		sema_up(&curr->child->sema_wait); // 부모 프로세스를 대기 상태에서 이탈
+
 
 	process_cleanup();
-
 }
 
 /* Free the current process's resources. */
@@ -386,18 +400,35 @@ void process_close_file (int fd) {
 
 /* 자식 프로세스 디스크립터를 검색하는 함수 */
 struct thread *get_child_process(tid_t tid) {
-	struct thread *t, *curr;
+	struct thread *curr;
+	struct child *child_info;
 	struct list_elem *e;
 	curr = thread_current();
 
 	for (e = list_begin(&curr->child_list); e != list_end(&curr->child_list); e = list_next(e)) {
-		t = list_entry(e, struct thread, child_elem);
-		if (tid == t->tid)
-			return t;
+		child_info = list_entry(e, struct child, child_elem);
+		if (tid == child_info->tid)
+			return child_info;
 	}
 
 	return NULL;
 }
+
+static void free_child(void) {
+	struct child *child_info;
+	struct thread *curr = thread_current();
+	struct list_elem *e = list_begin(&curr->child_list);
+
+	while (e != list_end(&curr->child_list)) {
+		child_info = list_entry(e, struct child, child_elem);
+		e = list_next(e);
+		if (child_info) {
+			free(child_info);
+			child_info = NULL;
+		}			
+	}
+}
+
 
 /* user stack에 argument 저장 */
 static void argument_stack(char **argv ,int argc ,struct intr_frame *if_) {
@@ -523,8 +554,11 @@ load (const char *file_name, struct intr_frame *if_) {
 		argc += 1;
 	}
 
+	lock_acquire(&filesys_lock);
 	/* Open executable file. */
 	t->running_file = file = filesys_open (file_name);
+	lock_release(&filesys_lock);
+
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
 		goto done;
