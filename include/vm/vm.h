@@ -2,6 +2,7 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "threads/synch.h"
 #include "lib/kernel/hash.h"
 
 enum vm_type {
@@ -65,6 +66,7 @@ struct page {
 struct frame {
 	void *kva;
 	struct page *page;
+	// struct list_elem frame_elem;
 };
 
 /* The function table for page operations.
@@ -88,6 +90,7 @@ struct page_operations {
  * All designs up to you for this. */
 struct supplemental_page_table {
 	struct hash *h;
+	struct lock spt_lock;
 };
 
 #include "threads/thread.h"
