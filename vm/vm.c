@@ -1,6 +1,7 @@
 /* vm.c: Generic interface for virtual memory objects. */
 
 #include "threads/malloc.h"
+#include "threads/vaddr.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 
@@ -63,19 +64,27 @@ err:
 /* Find VA from spt and return page. On error, return NULL. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
 	/* TODO: Fill this function. */
-
-	return page;
+	struct page *page = pg_round_up(va);
+	struct hash_elem *e = hash_find(spt->h, &page->hash_elem);
+	
+	return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
 bool
-spt_insert_page (struct supplemental_page_table *spt UNUSED,
-		struct page *page UNUSED) {
+spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page UNUSED) {
 	int succ = false;
-	/* TODO: Fill this function. */
+	struct hash_elem *e;
 
+	/* TODO: Fill this function. */
+	if (spt_find_page(spt, page->va))
+		succ = true;
+	else {
+		e = hash_insert(spt->h, &page->hash_elem);
+		if (e)
+			succ = true;
+	}
 	return succ;
 }
 
@@ -174,6 +183,7 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	hash_init(spt->h, page_hash, page_less, NULL);
 }
 
 /* Copy supplemental page table from src to dst */
@@ -187,4 +197,33 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+}
+
+/* Returns a hash value for page p. */
+unsigned
+page_hash (const struct hash_elem *p_, void *aux UNUSED) {
+  const struct page *p = hash_entry (p_, struct page, hash_elem);
+  return hash_bytes (&p->va, sizeof p->va);
+}
+
+/* Returns true if page a precedes page b. */
+bool
+page_less (const struct hash_elem *a_,
+           const struct hash_elem *b_, void *aux UNUSED) {
+  const struct page *a = hash_entry (a_, struct page, hash_elem);
+  const struct page *b = hash_entry (b_, struct page, hash_elem);
+
+  return a->va < b->va;
+}
+
+/* Returns the page containing the given virtual address, or a null pointer if no such page exists. */
+struct page *
+page_lookup (const void *address) {
+	struct page p;
+	struct hash_elem *e;
+	struct supplemental_page_table *spt = thread_current()->spt;
+
+	p.va = address;
+	e = hash_find (spt->h, &p.hash_elem);
+	return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
 }
