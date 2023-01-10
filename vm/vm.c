@@ -2,6 +2,7 @@
 
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
+#include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
 
@@ -68,7 +69,7 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page p;
   	struct hash_elem *e;
 
-  	p.va = va;
+  	p.va = pg_round_down(va); 
 	e = hash_find(spt->h, &p.hash_elem);
 
 	return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
@@ -84,9 +85,9 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page U
 	if (spt_find_page(spt, page->va))
 		succ = true;
 	else {
-		lock_acquire(&spt->spt_lock);
+		// lock_acquire(&spt->spt_lock);
 		e = hash_insert(spt->h, &page->hash_elem);
-		lock_release(&spt->spt_lock);
+		// lock_release(&spt->spt_lock);
 		if (e)
 			succ = true;
 	}
@@ -125,9 +126,9 @@ vm_evict_frame (void) {
 static struct frame *
 vm_get_frame (void) {
 	/* TODO: Fill this function. */
-	struct frame *frame;
-	frame = palloc_get_page(PAL_USER);
-	if (!frame)
+	struct frame *frame = calloc(1, sizeof(struct frame));
+	frame->kva = palloc_get_page(PAL_USER);
+	if (!frame->kva)
 		PANIC("todo");
 	// TODO: initialize frame's member
 	ASSERT(frame != NULL);
@@ -182,15 +183,16 @@ vm_claim_page (void *va UNUSED) {
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
-	struct supplemental_page_table *spt = thread_current()->spt;
+	struct thread *curr = thread_current();
+	
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	bool succ = spt_insert_page(spt, page);
+	bool succ = pml4_set_page(curr->pml4, page->va, frame->kva, NULL);
 	ASSERT(succ == true);
-	
+
 	return swap_in(page, frame->kva);
 }
 
