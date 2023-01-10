@@ -52,11 +52,25 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 	/* Check wheter the upage is already occupied or not. */
 	if (spt_find_page (spt, upage) == NULL) {
-		/* TODO: Create the page, fetch the initialier according to the VM type,
+		/* TODO: Create the page, fetch the initialier according to the VM type
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-
 		/* TODO: Insert the page into the spt. */
+
+		struct page *page = calloc(1, sizeof(struct page));
+		/* create "uninit" page struct according to the VM type */
+		if (VM_TYPE(type) == VM_ANON)
+			uninit_new(page, upage, init, type, aux, anon_initializer);
+		else if (VM_TYPE(type) == VM_FILE)
+			uninit_new(page, upage, init, type, aux, file_backed_initializer);
+		else
+			return false;
+		
+		/* Insert the page into the spt */
+		int succ = spt_insert_page(spt, page);
+		ASSERT(succ == true);
+		
+		return true;
 	}
 err:
 	return false;
@@ -184,7 +198,7 @@ static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
 	struct thread *curr = thread_current();
-	
+
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
