@@ -69,7 +69,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* Insert the page into the spt */
 		int succ = spt_insert_page(spt, page);
 		ASSERT(succ == true);
-		
+
 		return true;
 	}
 err:
@@ -165,10 +165,18 @@ bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
 	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
-	struct page *page = NULL;
 	/* TODO: Validate the fault */
+	/*
+	 1. If the supplemental page table indicates that the user process should not expect any data at the address 
+	 2. if the page lies within kernel virtual memory, 
+	 3. if the access is an attempt to write to a read-only page
+	 */
 	/* TODO: Your code goes here */
-
+	if (addr == NULL || is_kernel_vaddr(addr))
+		exit(-1);
+	struct page *page = spt_find_page(spt, addr);
+	if (!page)
+		exit(-1);
 	return vm_do_claim_page (page);
 }
 
@@ -186,7 +194,7 @@ vm_claim_page (void *va UNUSED) {
 	/* TODO: Fill this function */
 	// struct page *page = malloc(sizeof(struct page));
 	// page->va = va;
-	struct page *page = spt_find_page(thread_current ()->spt, va);
+	struct page *page = spt_find_page(&thread_current ()->spt, va);
 	if (page)
 		return vm_do_claim_page (page);
 
@@ -204,7 +212,7 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	bool succ = pml4_set_page(curr->pml4, page->va, frame->kva, NULL);
+	bool succ = pml4_set_page(curr->pml4, page->va, frame->kva, true);
 	ASSERT(succ == true);
 
 	return swap_in(page, frame->kva);
@@ -252,7 +260,7 @@ struct page *
 page_lookup (const void *address) {
 	struct page p;
 	struct hash_elem *e;
-	struct supplemental_page_table *spt = thread_current()->spt;
+	struct supplemental_page_table *spt = &thread_current()->spt;
 
 	p.va = address;
 	e = hash_find (spt->h, &p.hash_elem);

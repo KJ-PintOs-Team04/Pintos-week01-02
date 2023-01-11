@@ -23,6 +23,11 @@
 #include "intrinsic.h"
 #ifdef VM
 #include "vm/vm.h"
+typedef struct lazy_segemt {
+		struct file *file;
+		size_t page_read_bytes;
+		size_t page_zero_bytes;
+} lazy;
 #endif
 
 static void process_cleanup (void);
@@ -804,6 +809,21 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+
+	/* Get a page of memory. */
+	// page->va = palloc_get_page (PAL_USER);
+	// if (kpage == NULL)
+	// 	return false;
+
+	/* Load this page. */
+	lazy *lazy_ptr = (lazy *)aux;
+	if (file_read(lazy_ptr->file, page->va, lazy_ptr->page_read_bytes) != (int)lazy_ptr->page_read_bytes) {
+		palloc_free_page (page->va); //? free가 여기서 되는게 맞는 것 인가..
+		return false;
+	}
+	memset (page->va + lazy_ptr->page_read_bytes, 0, lazy_ptr->page_zero_bytes);
+	
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -826,7 +846,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-
+	file_seek(file, ofs); //? 맞을까..?
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -835,7 +855,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		lazy lazy_sg;
+		lazy_sg.file = file;
+		lazy_sg.page_read_bytes = page_read_bytes;
+		lazy_sg.page_zero_bytes = page_zero_bytes;
+		void *aux = &lazy_sg;
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;
@@ -858,6 +882,11 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	bool alloc = vm_alloc_page(VM_STACK_PAGE | VM_ANON, stack_bottom, true);
+	ASSERT(alloc == true);
+	success = vm_claim_page(stack_bottom);
+	if (success)
+		if_->rsp = USER_STACK;
 
 	return success;
 }
