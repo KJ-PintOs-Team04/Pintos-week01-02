@@ -27,6 +27,7 @@ typedef struct lazy_segemt {
 		struct file *file;
 		size_t page_read_bytes;
 		size_t page_zero_bytes;
+		off_t ofs;
 } lazy;
 #endif
 
@@ -219,13 +220,10 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-   
-
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
 	struct intr_frame _if;
-
 	memset(&_if, 0, sizeof(_if));
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
@@ -810,19 +808,19 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 
-	/* Get a page of memory. */
-	// page->va = palloc_get_page (PAL_USER);
-	// if (kpage == NULL)
-	// 	return false;
 
 	/* Load this page. */
 	lazy *lazy_ptr = (lazy *)aux;
-	if (file_read(lazy_ptr->file, page->va, lazy_ptr->page_read_bytes) != (int)lazy_ptr->page_read_bytes) {
-		palloc_free_page (page->va); //? free가 여기서 되는게 맞는 것 인가..
+
+	file_seek(lazy_ptr->file, lazy_ptr->ofs);
+	if (file_read(lazy_ptr->file, page->frame->kva, lazy_ptr->page_read_bytes) != (int)lazy_ptr->page_read_bytes)
+	{
+		palloc_free_page (page->frame->kva);
+		printf("fail\n");
 		return false;
 	}
-	memset (page->va + lazy_ptr->page_read_bytes, 0, lazy_ptr->page_zero_bytes);
-	
+	memset (page->frame->kva + lazy_ptr->page_read_bytes, 0, lazy_ptr->page_zero_bytes);
+	free(lazy_ptr);
 	return true;
 }
 
@@ -846,7 +844,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT (pg_ofs (upage) == 0);
 	ASSERT (ofs % PGSIZE == 0);
-	file_seek(file, ofs); //? 맞을까..?
+	// file_seek(file, ofs); //? 맞을까..?
 	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
@@ -855,11 +853,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		lazy lazy_sg;
-		lazy_sg.file = file;
-		lazy_sg.page_read_bytes = page_read_bytes;
-		lazy_sg.page_zero_bytes = page_zero_bytes;
-		void *aux = &lazy_sg;
+		lazy *lazy_sg = malloc(sizeof(lazy));
+		lazy_sg->file = file;
+		lazy_sg->page_read_bytes = page_read_bytes;
+		lazy_sg->page_zero_bytes = page_zero_bytes;
+		lazy_sg->ofs = ofs;
+		void *aux = lazy_sg;
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
 			return false;
@@ -868,6 +867,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
@@ -885,6 +885,7 @@ setup_stack (struct intr_frame *if_) {
 	bool alloc = vm_alloc_page(VM_STACK_PAGE | VM_ANON, stack_bottom, true);
 	ASSERT(alloc == true);
 	success = vm_claim_page(stack_bottom);
+	ASSERT(success == true);
 	if (success)
 		if_->rsp = USER_STACK;
 

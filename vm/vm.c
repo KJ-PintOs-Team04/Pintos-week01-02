@@ -5,6 +5,7 @@
 #include "threads/mmu.h"
 #include "vm/vm.h"
 #include "vm/inspect.h"
+#include "lib/kernel/hash.h"
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
@@ -57,7 +58,8 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: should modify the field after calling the uninit_new. */
 		/* TODO: Insert the page into the spt. */
 
-		struct page *page = calloc(1, sizeof(struct page));
+		// struct page *page = calloc(1, sizeof(struct page));
+		struct page *page = malloc(sizeof(struct page));
 		/* create "uninit" page struct according to the VM type */
 		if (VM_TYPE(type) == VM_ANON)
 			uninit_new(page, upage, init, type, aux, anon_initializer);
@@ -65,7 +67,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			uninit_new(page, upage, init, type, aux, file_backed_initializer);
 		else
 			return false;
-		
 		/* Insert the page into the spt */
 		int succ = spt_insert_page(spt, page);
 		ASSERT(succ == true);
@@ -96,15 +97,11 @@ spt_insert_page (struct supplemental_page_table *spt UNUSED, struct page *page U
 	struct hash_elem *e;
 
 	/* TODO: Fill this function. */
-	if (spt_find_page(spt, page->va))
+	// lock_acquire(&spt->spt_lock);
+	e = hash_insert(spt->h, &page->hash_elem);
+	// lock_release(&spt->spt_lock);
+	if (!e)
 		succ = true;
-	else {
-		// lock_acquire(&spt->spt_lock);
-		e = hash_insert(spt->h, &page->hash_elem);
-		// lock_release(&spt->spt_lock);
-		if (e)
-			succ = true;
-	}
 	return succ;
 }
 
@@ -141,11 +138,13 @@ static struct frame *
 vm_get_frame (void) {
 	/* TODO: Fill this function. */
 	struct frame *frame = calloc(1, sizeof(struct frame));
+	ASSERT (frame != NULL);
+
 	frame->kva = palloc_get_page(PAL_USER);
 	if (!frame->kva)
 		PANIC("todo");
 	// TODO: initialize frame's member
-	ASSERT(frame != NULL);
+	
 	ASSERT (frame->page == NULL);
 	return frame;
 }
@@ -172,6 +171,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	 3. if the access is an attempt to write to a read-only page
 	 */
 	/* TODO: Your code goes here */
+	printf("fault_addr: %p\n", addr);
 	if (addr == NULL || is_kernel_vaddr(addr))
 		exit(-1);
 	struct page *page = spt_find_page(spt, addr);
@@ -221,8 +221,10 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
+	spt->h = calloc(1, sizeof(struct hash));
 	hash_init(spt->h, page_hash, page_less, NULL);
 	lock_init(&spt->spt_lock);
+
 }
 
 /* Copy supplemental page table from src to dst */
