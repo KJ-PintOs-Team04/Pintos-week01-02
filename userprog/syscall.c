@@ -222,7 +222,6 @@ int filesize(int fd) {
 /* fd로 열린 파일에서 buffer에(메모리) 저장 */
 int read(int fd, void *buffer, unsigned size) {
 	off_t byte;
-	printf("fd: %d\n", fd);
 	if (fd == STDOUT_FILENO)
 		return -1;
 
@@ -288,7 +287,6 @@ unsigned tell(int fd) {
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인하는 함수 */
 void check_address(void *addr) {
 	struct thread *t = thread_current();
-	printf("addr: %p\n", addr);
-	if (addr == NULL || is_kernel_vaddr(addr) || pml4_get_page(t->pml4, addr) == NULL)
-		exit(-2);
+	if (addr == NULL || is_kernel_vaddr(addr))
+		exit(-1);
 }

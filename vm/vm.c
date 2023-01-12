@@ -171,7 +171,6 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	 3. if the access is an attempt to write to a read-only page
 	 */
 	/* TODO: Your code goes here */
-	printf("fault_addr: %p\n", addr);
 	if (addr == NULL || is_kernel_vaddr(addr))
 		exit(-1);
 	struct page *page = spt_find_page(spt, addr);
