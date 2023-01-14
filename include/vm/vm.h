@@ -49,6 +49,7 @@ struct page {
 
 	/* Your implementation */
 	struct hash_elem hash_elem;
+	// bool writable;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -92,6 +93,12 @@ struct supplemental_page_table {
 	struct hash *h;
 	struct lock spt_lock;
 };
+typedef struct lazy_segemt {
+		struct file *file;
+		size_t page_read_bytes;
+		size_t page_zero_bytes;
+		off_t ofs;
+} lazy;
 
 #include "threads/thread.h"
 void supplemental_page_table_init (struct supplemental_page_table *spt);
@@ -117,4 +124,5 @@ enum vm_type page_get_type (struct page *page);
 
 unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
 bool page_less(const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED);
+void page_free(struct hash_elem *e, void *aux);
 #endif /* VM_VM_H */
