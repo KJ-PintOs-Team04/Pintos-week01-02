@@ -7,6 +7,7 @@
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
 
+static bool vm_copy_uninit_page(struct page *page);
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
@@ -171,6 +172,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	 3. if the access is an attempt to write to a read-only page
 	 */
 	/* TODO: Your code goes here */
+	// printf("fault_addr: %p\n", addr);
 	if (addr == NULL || is_kernel_vaddr(addr))
 		exit(-1);
 	struct page *page = spt_find_page(spt, addr);
@@ -191,8 +193,6 @@ vm_dealloc_page (struct page *page) {
 bool
 vm_claim_page (void *va UNUSED) {
 	/* TODO: Fill this function */
-	// struct page *page = malloc(sizeof(struct page));
-	// page->va = va;
 	struct page *page = spt_find_page(&thread_current ()->spt, va);
 	if (page)
 		return vm_do_claim_page (page);
@@ -222,7 +222,7 @@ void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 	spt->h = calloc(1, sizeof(struct hash));
 	hash_init(spt->h, page_hash, page_less, NULL);
-	lock_init(&spt->spt_lock);
+	// lock_init(&spt->spt_lock);
 
 }
 
@@ -230,6 +230,48 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+	
+	struct hash_iterator i;
+	struct page *p;
+	struct thread *curr = thread_current();
+	void *parent_page;
+
+	/* Iterate through each page in the src's supplemental page table */
+	hash_first (&i, src->h);
+	while (hash_next (&i)) {
+		p = hash_entry (hash_cur (&i), struct page, hash_elem);
+
+		enum vm_type type = p->operations->type;
+
+		if (VM_TYPE(type) == VM_UNINIT) {
+			bool alloc = vm_copy_uninit_page(p);
+			ASSERT(alloc == true);
+			continue;
+		}
+
+		/* alloc page */
+		bool alloc = vm_alloc_page(type, p->va, true);
+		ASSERT(alloc == true);
+		
+		
+		parent_page = pml4_get_page (curr->parent->pml4, p->va);
+		if (parent_page) {
+			struct page *newpage = spt_find_page(dst, p->va);
+			struct frame *frame = vm_get_frame ();
+			/* Set links */
+			frame->page = newpage;
+			newpage->frame = frame;
+
+			memcpy(frame->kva, parent_page, PGSIZE);
+
+			/* TODO: Insert page table entry to map page's VA to frame's PA. */
+			bool succ = pml4_set_page(curr->pml4, newpage->va, frame->kva, true);
+			ASSERT(succ == true);
+
+			swap_in(newpage, frame->kva);
+		}	
+	}
+	return true;
 }
 
 /* Free the resource hold by the supplemental page table */
@@ -237,6 +279,11 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	if (spt->h) {
+		hash_destroy(spt->h, page_free);
+		free(spt->h);
+	}
+	// TODO: writeback(cache)
 }
 
 /* Returns a hash value for page p. */
@@ -256,14 +303,26 @@ page_less (const struct hash_elem *a_,
   return a->va < b->va;
 }
 
-/* Returns the page containing the given virtual address, or a null pointer if no such page exists. */
-struct page *
-page_lookup (const void *address) {
-	struct page p;
-	struct hash_elem *e;
-	struct supplemental_page_table *spt = &thread_current()->spt;
 
-	p.va = address;
-	e = hash_find (spt->h, &p.hash_elem);
-	return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
+void
+page_free (struct hash_elem *e, void *aux) {
+	struct page *page = hash_entry(e, struct page, hash_elem);
+	
+	destroy(page);
+	free(page);
+}
+
+static bool
+vm_copy_uninit_page(struct page *page) {
+	struct uninit_page uninit = page->uninit;
+	enum vm_type type = page->operations->type;
+
+	struct page *newpage = malloc(sizeof(struct page));
+	void *aux = malloc(sizeof(lazy));
+
+	memcpy(aux, uninit.aux, sizeof(*aux));
+	uninit_new(newpage, page->va, uninit.init, type, aux, uninit.page_initializer);
+	
+	/* Insert the copied page into the current spt */
+	return spt_insert_page(&thread_current ()->spt, newpage);	
 }

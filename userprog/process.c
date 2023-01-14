@@ -22,13 +22,7 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #ifdef VM
-#include "vm/vm.h"
-typedef struct lazy_segemt {
-		struct file *file;
-		size_t page_read_bytes;
-		size_t page_zero_bytes;
-		off_t ofs;
-} lazy;
+#include "vm/vm.h"	
 #endif
 
 static void process_cleanup (void);
@@ -231,7 +225,9 @@ process_exec (void *f_name) {
 
 	/* We first kill the current context */
 	process_cleanup ();
-
+#ifdef VM
+	supplemental_page_table_init (&thread_current ()->spt);
+#endif
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
