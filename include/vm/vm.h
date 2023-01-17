@@ -35,6 +35,7 @@ enum vm_type {
 
 struct page_operations;
 struct thread;
+struct lock hash_lock;
 
 #define VM_TYPE(type) ((type) & 7)
 
@@ -49,7 +50,7 @@ struct page {
 
 	/* Your implementation */
 	struct hash_elem hash_elem;
-	// bool writable;
+	bool writable;
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */

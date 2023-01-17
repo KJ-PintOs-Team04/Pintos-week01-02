@@ -17,6 +17,7 @@
 #include "lib/kernel/stdio.h"
 #include "lib/string.h"
 #include "intrinsic.h"
+#include "vm/vm.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -32,7 +33,9 @@ int read(int fd, void *buffer, unsigned size);
 int write (int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
-void check_address(void *addr);
+static struct page *check_address(void *addr);
+static void check_writable_buffer(void *buffer, int size);
+static void check_valid_buffer(void *buffer, int size);
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -65,6 +68,7 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+	thread_current()->rsp = f->rsp;
 	switch (f->R.rax)
 	{
 		case SYS_HALT:
@@ -100,11 +104,11 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
-			check_address(f->R.rsi);
+			check_writable_buffer(f->R.rsi, f->R.rdx);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
-			check_address(f->R.rsi);
+			check_valid_buffer(f->R.rsi, f->R.rdx);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
@@ -285,8 +289,36 @@ unsigned tell(int fd) {
 }
 
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인하는 함수 */
-void check_address(void *addr) {
+static struct page *check_address(void *addr) {
 	struct thread *t = thread_current();
 	if (addr == NULL || is_kernel_vaddr(addr))
 		exit(-1);
+	return spt_find_page(&t->spt, addr);
+}
+
+static void check_writable_buffer (void *buffer, int size) {
+	struct page *page;
+	int i = 0;
+	while (size > 0)
+	{
+		page = check_address(buffer + PGSIZE * i);
+		if (page && !page->writable) {
+			exit(-1);
+		}
+		size -= PGSIZE;
+		i++;
+	}
+}
+
+static void check_valid_buffer (void *buffer, int size) {
+	struct page *page;
+	int i = 0;
+	while (size > 0) {
+		page = check_address(buffer + PGSIZE * i);
+		if (page)
+			size -= PGSIZE;
+		else
+			exit(-1);
+		i++;
+	}
 }
